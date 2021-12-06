@@ -1,7 +1,8 @@
-from ctypes import cdll, byref, c_char_p
+from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER
 from pathlib import Path
-from typing import List
+from typing import List, Callable
 
+from camera.hik_vision.type_map import h_LONG, h_DWORD, h_BYTE
 from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEINFO_V40, NET_DVR_PREVIEWINFO
 
 
@@ -129,11 +130,11 @@ class HIKCamera:
 
     def save_real_data(self, preview_handle: int, save_file: Path):
         """
-        录像
+        保存录像
         :return:
         """
         if not self.call_cpp("NET_DVR_SaveRealData", preview_handle, c_char_p(bytes(str(save_file), self.encoding))):
-            raise Exception(f"录像异常：{self.get_last_error_code()}")
+            raise Exception(f"保存录像异常：{self.get_last_error_code()}")
 
     def stop_save_real_data(self, preview_handle: int):
         """
@@ -142,7 +143,19 @@ class HIKCamera:
         :return:
         """
         if not self.call_cpp("NET_DVR_StopSaveRealData", preview_handle):
-            raise Exception(f"停止数据捕获：{self.get_last_error_code()}")
+            raise Exception(f"停止数据捕获异常：{self.get_last_error_code()}")
+
+    def set_real_data_callback(self, preview_handle: int, f: Callable):
+        """
+        注册实时码流回调数据
+        :param preview_handle:
+        :param f:
+        :return:
+        """
+        real_data_callback = CFUNCTYPE(None, h_LONG, h_DWORD, POINTER(h_BYTE), h_DWORD, h_DWORD)
+        cb = real_data_callback(f)
+        if not self.call_cpp("NET_DVR_SetRealDataCallBack", preview_handle, cb, None):
+            raise Exception(f"注册实时码流回调数据异常：{self.get_last_error_code()}")
 
 
 if __name__ == '__main__':
