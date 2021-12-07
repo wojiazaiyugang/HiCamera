@@ -114,7 +114,7 @@ class HIKCamera:
         preview_info.lChannel = 1
         preview_info.dwStreamType = 0
         preview_info.bBlocked = 1
-        preview_handle = self.call_cpp("NET_DVR_RealPlay_V40", self.user_id, byref(preview_info), None, None)
+        preview_handle = self.call_cpp("NET_DVR_RealPlay_V30", self.user_id, byref(preview_info), None, None)
         if preview_handle == -1:
             raise Exception(f"预览失败：{self.get_last_error_code()}")
         return preview_handle
@@ -157,6 +157,14 @@ class HIKCamera:
         if not self.call_cpp("NET_DVR_SetRealDataCallBack", preview_handle, cb, None):
             raise Exception(f"注册实时码流回调数据异常：{self.get_last_error_code()}")
 
+    def set_standard_data_callback(self, preview_handle: int, f: Callable):
+        """
+        注册回调函数，捕获实时码流数据（标准码流）。
+        """
+        real_data_callback = CFUNCTYPE(None, h_LONG, h_DWORD, POINTER(h_BYTE), h_DWORD, h_DWORD)
+        cb = real_data_callback(f)
+        if not self.call_cpp("NET_DVR_SetStandardDataCallBack", preview_handle, cb, None):
+            raise Exception(f"注册实时标准码流回调数据异常：{self.get_last_error_code()}")
 
 if __name__ == '__main__':
     camera = HIKCamera(ip="192.168.230.81", user_name="admin", password="12345678a")
