@@ -22,6 +22,7 @@ class HIKCamera:
         self.libs = self.read_libs()
         self.init_sdk()
         self.user_id = self._login(ip, user_name, password)
+        self.preview_handle = None
 
     def __del__(self):
         self.clean_sdk()
@@ -105,7 +106,7 @@ class HIKCamera:
         """
         return hex(self.call_cpp("NET_DVR_GetSDKVersion"))
 
-    def start_preview(self) -> int:
+    def start_preview(self):
         """
         开始登预览
         :return:
@@ -114,38 +115,35 @@ class HIKCamera:
         preview_info.lChannel = 1
         preview_info.dwStreamType = 0
         preview_info.bBlocked = 1
-        preview_handle = self.call_cpp("NET_DVR_RealPlay_V30", self.user_id, byref(preview_info), None, None)
-        if preview_handle == -1:
+        self.preview_handle = self.call_cpp("NET_DVR_RealPlay_V30", self.user_id, byref(preview_info), None, None)
+        if self.preview_handle == -1:
             raise Exception(f"预览失败：{self.get_last_error_code()}")
-        return preview_handle
 
-    def stop_preview(self, preview_handle: int):
+    def stop_preview(self):
         """
         停止预览
-        :param preview_handle:
         :return:
         """
-        if not self.call_cpp("NET_DVR_StopRealPlay", preview_handle):
+        if not self.call_cpp("NET_DVR_StopRealPlay", self.preview_handle):
             raise Exception(f"停止预览异常：{self.get_last_error_code()}")
 
-    def save_real_data(self, preview_handle: int, save_file: Path):
+    def save_real_data(self, save_file: Path):
         """
         保存录像
         :return:
         """
-        if not self.call_cpp("NET_DVR_SaveRealData", preview_handle, c_char_p(bytes(str(save_file), self.encoding))):
+        if not self.call_cpp("NET_DVR_SaveRealData", self.preview_handle, c_char_p(bytes(str(save_file), self.encoding))):
             raise Exception(f"保存录像异常：{self.get_last_error_code()}")
 
-    def stop_save_real_data(self, preview_handle: int):
+    def stop_save_real_data(self):
         """
         停止数据捕获
-        :param preview_handle:
         :return:
         """
-        if not self.call_cpp("NET_DVR_StopSaveRealData", preview_handle):
+        if not self.call_cpp("NET_DVR_StopSaveRealData", self.preview_handle):
             raise Exception(f"停止数据捕获异常：{self.get_last_error_code()}")
 
-    def set_real_data_callback(self, preview_handle: int, f: Callable):
+    def set_real_data_callback(self, f: Callable):
         """
         注册实时码流回调数据
         :param preview_handle:
@@ -154,17 +152,18 @@ class HIKCamera:
         """
         real_data_callback = CFUNCTYPE(None, h_LONG, h_DWORD, POINTER(h_BYTE), h_DWORD, h_DWORD)
         cb = real_data_callback(f)
-        if not self.call_cpp("NET_DVR_SetRealDataCallBack", preview_handle, cb, None):
+        if not self.call_cpp("NET_DVR_SetRealDataCallBack", self.preview_handle, cb, None):
             raise Exception(f"注册实时码流回调数据异常：{self.get_last_error_code()}")
 
-    def set_standard_data_callback(self, preview_handle: int, f: Callable):
+    def set_standard_data_callback(self, f: Callable):
         """
         注册回调函数，捕获实时码流数据（标准码流）。
         """
         real_data_callback = CFUNCTYPE(None, h_LONG, h_DWORD, POINTER(h_BYTE), h_DWORD, h_DWORD)
         cb = real_data_callback(f)
-        if not self.call_cpp("NET_DVR_SetStandardDataCallBack", preview_handle, cb, None):
+        if not self.call_cpp("NET_DVR_SetStandardDataCallBack", self.preview_handle, cb, None):
             raise Exception(f"注册实时标准码流回调数据异常：{self.get_last_error_code()}")
+
 
 if __name__ == '__main__':
     camera = HIKCamera(ip="192.168.230.81", user_name="admin", password="12345678a")

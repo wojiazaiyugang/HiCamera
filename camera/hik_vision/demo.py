@@ -77,9 +77,9 @@ if __name__ == '__main__':
     import time
 
     hik_camera = camera = HIKCamera(ip="192.168.230.71", user_name="admin", password="12345678a")
-    preview_handle = hik_camera.start_preview()
-    hik_camera.set_standard_data_callback(preview_handle, standard_real_data_callback)
-    # hik_camera.save_real_data(preview_handle, Path("./test.mp4"))
+    hik_camera.start_preview()
+    # hik_camera.set_standard_data_callback(preview_handle, standard_real_data_callback)
+    hik_camera.save_real_data(Path("./test2.mp4"))
     time.sleep(4)
-    hik_camera.stop_preview(preview_handle)
+    hik_camera.stop_preview()
     # print("123")
