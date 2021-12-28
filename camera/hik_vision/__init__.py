@@ -1,8 +1,9 @@
+import time
 from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, sizeof, pointer, memset, addressof
 from pathlib import Path
 from typing import List, Callable
 
-from camera.hik_vision.type_map import h_LONG, h_DWORD, h_BYTE, h_ULONG
+from camera.hik_vision.type_map import h_LONG, h_DWORD, h_BYTE, h_ULONG, h_BOOL
 from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEINFO_V40, NET_DVR_PREVIEWINFO, NET_DVR_CAMERAPARAMCFG, NET_DVR_VIDEOEFFECT, NET_DVR_GAIN, \
     NET_DVR_WHITEBALANCE, NET_DVR_GAMMACORRECT, NET_DVR_EXPOSURE, NET_DVR_WDR, NET_DVR_DAYNIGHT, NET_DVR_NOISEREMOVE, NET_DVR_CMOSMODECFG, NET_DVR_TIME, NET_DVR_BACKLIGHT
 
@@ -20,7 +21,10 @@ class HIKCamera:
         :param password: 密码
         """
         self.encoding = "ascii"
+        self.lib = None
         self.libs = self.read_libs()
+
+
         self.init_sdk()
         self.user_id = self._login(ip, user_name, password)
         self.preview_handle = None
@@ -49,8 +53,7 @@ class HIKCamera:
                 continue
         raise Exception("没有找到接口！")
 
-    @staticmethod
-    def read_libs() -> List[str]:
+    def read_libs(self) -> List[str]:
         """
         读取所有so
         :return:
@@ -59,6 +62,8 @@ class HIKCamera:
         for file in Path(__file__).parent.joinpath("libs").iterdir():
             if file.name.endswith(".so"):
                 libs.append(str(file))
+            if file.name == "libhcnetsdk.so":
+                self.lib = cdll.LoadLibrary(str(file))
         return libs
 
     def init_sdk(self):
@@ -177,15 +182,20 @@ class HIKCamera:
         # cfg.struNoiseRemove = NET_DVR_NOISEREMOVE()
         # cfg.struCmosModeCfg = NET_DVR_CMOSMODECFG()
         a = h_ULONG(0)
-        res = self.call_cpp("NET_DVR_GetDVRConfig", self.user_id, 1067, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG), byref(a))
+        self.lib.NET_DVR_GetDVRConfig.argtypes = [h_LONG, h_DWORD, h_LONG, POINTER(NET_DVR_CAMERAPARAMCFG),h_DWORD, POINTER(h_DWORD)]
+        self.lib.NET_DVR_GetDVRConfig.restype = h_BOOL
+        res = self.lib.NET_DVR_GetDVRConfig(self.user_id, 1067, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG), byref(a))
         print(f"err is {self.get_last_error_code()}")
         print(f"函数返回值{res}")
-        print(cfg.struDayNight.byDayNightFilterType)
+        print(f"昼夜转换{cfg.struDayNight.byDayNightFilterType}")
+        print(f"白平衡{cfg.struWhiteBalance.byWhiteBalanceMode}")
+        print(f"亮度{cfg.struVideoEffect.byBrightnessLevel}")
+        print(f"对比度{cfg.struVideoEffect.byContrastLevel}")
         return cfg
 
     def set_dvr_config(self):
         cfg = self.get_dvr_config()
-        cfg.struDayNight.byDayNightFilterType = 6
+        cfg.struDayNight.byDayNightFilterType = 5
         res = self.call_cpp("NET_DVR_SetDVRConfig", self.user_id, 1068, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG))
         print(f"err is {self.get_last_error_code()}")
         print(f"函数返回值{res}")
@@ -193,7 +203,12 @@ class HIKCamera:
 
 
 if __name__ == '__main__':
-    camera = HIKCamera(ip="192.168.230.71", user_name="admin", password="12345678a")
+    camera = HIKCamera(ip="192.168.111.77", user_name="admin", password="12345678a")
+    # camera.start_preview()
+    # video = Path("/workspace/HiBoxing/f.mp4")
+    # print(video.resolve())
+    # camera.save_real_data(video)
+    # time.sleep(2)
     camera.get_dvr_config()
-    camera.set_dvr_config()
-    camera.get_dvr_config()
+    # camera.set_dvr_config()
+    # camera.get_dvr_config()
