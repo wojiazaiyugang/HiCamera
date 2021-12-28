@@ -207,3 +207,195 @@ class NET_DVR_PREVIEWINFO(Structure):
         # 保留，置为0
         ('byRes', h_BYTE * 215),
     ]
+
+
+# noinspection SpellCheckingInspection
+class NET_DVR_VIDEOEFFECT(Structure):
+    """
+    视频参数结构体
+    """
+    _fields_ = [
+        # byBrightnessLevel
+        # 亮度，取值范围[0, 100]
+        ("byBrightnessLevel", h_BYTE),
+        # byContrastLevel
+        # 对比度，取值范围[0, 100]
+        ("byContrastLevel", h_BYTE),
+        # bySharpnessLevel
+        # 锐度，取值范围[0, 100]
+        ("bySharpnessLevel", h_BYTE),
+        # bySaturationLevel
+        # 饱和度，取值范围[0, 100]
+        ("bySaturationLevel", h_BYTE),
+        # byHueLevel
+        # 色度，取值范围[0, 100]，保留
+        ("byHueLevel", h_BYTE),
+        # byEnableFunc
+        # 使能，按位表示。bit0 - SMART
+        # IR(防过曝)，bit1 - 低照度，bit2 - 强光抑制使能，值：0 - 否，1 - 是，例如byEnableFunc & 0x2 == 1
+        # 表示使能低照度功能； bit3 - 锐度类型，值：0 - 自动，1 - 手动。
+        ("byEnableFunc", h_BYTE),
+        # byLightInhibitLevel
+        # 强光抑制等级，取值范围：[1, 3]
+        ("byLightInhibitLevel", h_BYTE),
+        # byGrayLevel
+        # 灰度值域:0 - [0, 255]，1 - [16, 235]
+        ("byGrayLevel", h_BYTE)
+    ]
+
+
+class NET_DVR_GAIN(Structure):
+    """
+    增益参数结构体
+    """
+    _fields_ = [
+        # byGainLevel
+        # 增益，单位dB，取值范围[0, 100]
+        ("byGainLevel", h_BYTE),
+        ("byGainUserSet", h_BYTE),
+        ("byRes", h_BYTE * 2),
+        ("dwMaxGainValue", h_DWORD)
+    ]
+
+
+class NET_DVR_WHITEBALANCE(Structure):
+    _fields_ = [
+        ("byWhiteBalanceMode", h_BYTE),
+        ("byWhiteBalanceModeRGain", h_BYTE),
+        ("byWhiteBalanceModeBGain", h_BYTE),
+        ("byRes", h_BYTE * 5)
+    ]
+
+
+class NET_DVR_EXPOSURE(Structure):
+    _fields_ = [
+        ("byExposureMode", h_BYTE),
+        ("byAutoApertureLevel", h_BYTE),
+        ("byRes", h_BYTE * 2),
+        ("dwVideoExposureSet", h_WORD),
+        ("dwExposureUserSet", h_WORD),
+        ("dwRes", h_WORD),
+    ]
+
+
+class NET_DVR_GAMMACORRECT(Structure):
+    _fields_ = [
+        ("byGammaCorrectionEnabled", h_BYTE),
+        ("byGammaCorrectionLevel", h_BYTE),
+        ("byRes", h_BYTE * 6),
+    ]
+
+
+class NET_DVR_WDR(Structure):
+    _fields_ = [
+        ("byWDREnabled", h_BYTE),
+        ("byWDRLevel1", h_BYTE),
+        ("byWDRLevel2", h_BYTE),
+        ("byWDRContrastLevel", h_BYTE),
+        ("byRes", h_BYTE * 16),
+    ]
+
+
+class NET_DVR_DAYNIGHT(Structure):
+    _fields_ = [
+        ("byDayNightFilterType", h_BYTE),
+        ("bySwitchScheduleEnabled", h_BYTE),
+        ("byBeginTime", h_BYTE),
+        ("byEndTime", h_BYTE),
+        ("byDayToNightFilterLevel", h_BYTE),
+        ("byNightToDayFilterLevel", h_BYTE),
+        ("byDayNightFilterTime", h_BYTE),
+        ("byBeginTimeMin", h_BYTE),
+        ("byBeginTimeSec", h_BYTE),
+        ("byEndTimeMin", h_BYTE),
+        ("byEndTimeSec", h_BYTE),
+        ("byAlarmTrigState", h_BYTE),
+    ]
+
+
+class NET_DVR_NOISEREMOVE(Structure):
+    _fields_ = [
+        ("byDigitalNoiseRemoveEnable", h_BYTE),
+        ("byDigitalNoiseRemoveLevel", h_BYTE),
+        ("bySpectralLevel", h_BYTE),
+        ("byTemporalLevel", h_BYTE),
+        ("byDigitalNoiseRemove2DEnable", h_BYTE),
+        ("byDigitalNoiseRemove2DLevel", h_BYTE),
+        ("byRes", h_BYTE * 2),
+    ]
+
+
+class NET_DVR_CMOSMODECFG(Structure):
+    _fields_ = [
+        ("byCaptureMod", h_BYTE),
+        ("byBrightnessGate", h_BYTE),
+        ("byCaptureGain1", h_BYTE),
+        ("byCaptureGain2", h_BYTE),
+        ("dwCaptureShutterSpeed1", h_WORD),
+        ("dwCaptureShutterSpeed2", h_WORD),
+        ("byRes", h_BYTE * 4),
+    ]
+
+
+class NET_DVR_BACKLIGHT(Structure):
+    _fields_ = [
+        ("byBacklightMode", h_BYTE),
+        ("byBacklightLevel", h_BYTE),
+        ("byRes1", h_BYTE * 2),
+        ("dwPositionX1", h_DWORD),
+        ("dwPositionY1", h_DWORD),
+        ("dwPositionX2", h_DWORD),
+        ("dwPositionY2", h_DWORD),
+        ("byRes2", h_BYTE * 4),
+    ]
+
+
+# noinspection SpellCheckingInspection
+class NET_DVR_CAMERAPARAMCFG(Structure):
+    """
+    前端参数配置结构体
+    """
+    _fields_ = [
+        ("dwSize", h_DWORD),
+        ("struVideoEffect", NET_DVR_VIDEOEFFECT),
+        ("struGain", NET_DVR_GAIN),
+        ("struWhiteBalance", NET_DVR_WHITEBALANCE),
+        ("struExposure", NET_DVR_EXPOSURE),
+        ("struGammaCorrect", NET_DVR_GAMMACORRECT),
+        ("struWdr", NET_DVR_WDR),
+        ("struDayNight", NET_DVR_DAYNIGHT),
+        ("struBackLight", NET_DVR_BACKLIGHT),
+        ("struNoiseRemove", NET_DVR_NOISEREMOVE),
+        ("byPowerLineFrequencyMode", h_BYTE),
+        ("byIrisMode", h_BYTE),
+        ("byMirror", h_BYTE),
+        ("byDigitalZoom", h_BYTE),
+        ("byDeadPixelDetect", h_BYTE),
+        ("byBlackPwl", h_BYTE),
+        ("byEptzGate", h_BYTE),
+        ("byLocalOutputGate", h_BYTE),
+        ("byCoderOutputMode", h_BYTE),
+        ("byLineCoding", h_BYTE),
+        ("byDimmerMode", h_BYTE),
+        ("byPaletteMode", h_BYTE),
+        ("byEnhancedMode", h_BYTE),
+        ("byDynamicContrastEN", h_BYTE),
+        ("byDynamicContrast", h_BYTE),
+        ("byJPEGQuality", h_BYTE),
+        ("struCmosModeCfg", NET_DVR_CMOSMODECFG),
+        ("byFilterSwitch", h_BYTE),
+        ("byFocusSpeed", h_BYTE),
+        ("byAutoCompensationInterval", h_BYTE),
+        ("bySceneMode", h_BYTE),
+    ]
+
+
+class NET_DVR_TIME(Structure):
+    _fields_ = [
+        ("dwYear", h_DWORD),
+        ("dwMonth", h_DWORD),
+        ("dwDay", h_DWORD),
+        ("dwHour", h_DWORD),
+        ("dwMinute", h_DWORD),
+        ("dwSecond", h_DWORD),
+    ]

@@ -1,9 +1,10 @@
-from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER
+from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, sizeof, pointer, memset, addressof
 from pathlib import Path
 from typing import List, Callable
 
-from camera.hik_vision.type_map import h_LONG, h_DWORD, h_BYTE
-from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEINFO_V40, NET_DVR_PREVIEWINFO
+from camera.hik_vision.type_map import h_LONG, h_DWORD, h_BYTE, h_ULONG
+from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEINFO_V40, NET_DVR_PREVIEWINFO, NET_DVR_CAMERAPARAMCFG, NET_DVR_VIDEOEFFECT, NET_DVR_GAIN, \
+    NET_DVR_WHITEBALANCE, NET_DVR_GAMMACORRECT, NET_DVR_EXPOSURE, NET_DVR_WDR, NET_DVR_DAYNIGHT, NET_DVR_NOISEREMOVE, NET_DVR_CMOSMODECFG, NET_DVR_TIME, NET_DVR_BACKLIGHT
 
 
 class HIKCamera:
@@ -146,7 +147,6 @@ class HIKCamera:
     def set_real_data_callback(self, f: Callable):
         """
         注册实时码流回调数据
-        :param preview_handle:
         :param f:
         :return:
         """
@@ -164,7 +164,36 @@ class HIKCamera:
         if not self.call_cpp("NET_DVR_SetStandardDataCallBack", self.preview_handle, cb, None):
             raise Exception(f"注册实时标准码流回调数据异常：{self.get_last_error_code()}")
 
+    def get_dvr_config(self):
+        cfg = NET_DVR_CAMERAPARAMCFG()
+        # cfg.struVideoEffect = NET_DVR_VIDEOEFFECT()
+        # cfg.struGain = NET_DVR_GAIN()
+        # cfg.struWhiteBalance = NET_DVR_WHITEBALANCE()
+        # cfg.struExposure = NET_DVR_EXPOSURE()
+        # cfg.struGammaCorrect = NET_DVR_GAMMACORRECT()
+        # cfg.struWdr = NET_DVR_WDR()
+        # cfg.struDayNight = NET_DVR_DAYNIGHT()
+        # cfg.struBackLight = NET_DVR_BACKLIGHT()
+        # cfg.struNoiseRemove = NET_DVR_NOISEREMOVE()
+        # cfg.struCmosModeCfg = NET_DVR_CMOSMODECFG()
+        a = h_ULONG(0)
+        res = self.call_cpp("NET_DVR_GetDVRConfig", self.user_id, 1067, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG), byref(a))
+        print(f"err is {self.get_last_error_code()}")
+        print(f"函数返回值{res}")
+        print(cfg.struDayNight.byDayNightFilterType)
+        return cfg
+
+    def set_dvr_config(self):
+        cfg = self.get_dvr_config()
+        cfg.struDayNight.byDayNightFilterType = 6
+        res = self.call_cpp("NET_DVR_SetDVRConfig", self.user_id, 1068, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG))
+        print(f"err is {self.get_last_error_code()}")
+        print(f"函数返回值{res}")
+        a = 1
+
 
 if __name__ == '__main__':
-    camera = HIKCamera(ip="192.168.230.81", user_name="admin", password="12345678a")
-    # print(camera.get_last_error_code())
+    camera = HIKCamera(ip="192.168.230.71", user_name="admin", password="12345678a")
+    camera.get_dvr_config()
+    camera.set_dvr_config()
+    camera.get_dvr_config()

@@ -10,6 +10,7 @@ h_BYTE = c_byte
 h_INT = c_int
 h_WORD = c_uint16
 h_LONG = c_long
+h_ULONG = c_ulong
 h_FLOAT = c_float
 h_DWORD = c_ulong  # 64bit:c_ulong    32bit:c_uint32
 
