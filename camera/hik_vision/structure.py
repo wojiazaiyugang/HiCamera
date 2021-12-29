@@ -5,6 +5,11 @@ from ctypes import Structure
 
 from camera.hik_vision.type_map import h_CHAR, h_BYTE, h_WORD, h_VOID_P, h_BOOL, h_LONG, h_DWORD, h_HWND
 
+NET_DVR_SYSHEAD = 1
+NET_DVR_STREAMDATA = 2
+NET_DVR_AUDIOSTREAMDATA = 3
+NET_DVR_PRIVATE_DATA = 112
+
 
 # noinspection PyPep8Naming
 class NET_DVR_USER_LOGIN_INFO(Structure):
@@ -398,4 +403,11 @@ class NET_DVR_TIME(Structure):
         ("dwHour", h_DWORD),
         ("dwMinute", h_DWORD),
         ("dwSecond", h_DWORD),
+    ]
+
+
+class NET_DVR_LOCAL_SDK_PATH(Structure):
+    _fields_ = [
+        ("sPath", h_CHAR * 256),
+        ("byRes", h_BYTE * 128)
     ]

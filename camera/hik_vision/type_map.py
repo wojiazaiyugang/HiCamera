@@ -18,3 +18,4 @@ h_VOID_P = c_void_p
 h_HWND = c_void_p  # handle of window
 h_CHAR_P = c_ubyte
 h_BYTE_P = c_ubyte
+h_UNSIGNED_CHAR_P = h_CHAR_P
