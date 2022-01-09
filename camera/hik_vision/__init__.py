@@ -1,6 +1,5 @@
-import ctypes
 import time
-from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, string_at, CDLL
+from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, string_at, sizeof
 from pathlib import Path
 
 import cv2
@@ -165,14 +164,18 @@ class HIKCamera:
         if not self.lib.NET_DVR_StopRealPlay(self._get_preview_handle()):
             raise Exception(f"停止预览异常：{self.get_last_error_code()}")
 
-    def save_real_data(self, save_file: Path):
+    def save_real_data(self, save_file: Path, stream_type: int = 1):
         """
         保存录像
+        :param save_file: 保存文件路径
+        :param stream_type: 保存流类型
+        1: mp4v
+        2: avc1
         :return:
         """
-        self.lib.NET_DVR_SaveRealData.argtypes = [h_LONG, POINTER(h_CHAR)]
-        self.lib.NET_DVR_SaveRealData.restype = h_BOOL
-        if not self.lib.NET_DVR_SaveRealData(self._get_preview_handle(), c_char_p(bytes(str(save_file), self.encoding))):
+        self.lib.NET_DVR_SaveRealData_V30.argtypes = [h_LONG, h_DWORD, POINTER(h_CHAR)]
+        self.lib.NET_DVR_SaveRealData_V30.restype = h_BOOL
+        if not self.lib.NET_DVR_SaveRealData_V30(self._get_preview_handle(), stream_type, c_char_p(bytes(str(save_file), self.encoding))):
             self.error("保存录像异常")
 
     def stop_save_real_data(self):
@@ -201,32 +204,36 @@ class HIKCamera:
         else:
             self.error("获取播放通道号失败")
 
-    # def get_dvr_config(self):
-    #     cfg = NET_DVR_CAMERAPARAMCFG()
-    #     # cfg.struVideoEffect = NET_DVR_VIDEOEFFECT()
-    #     # cfg.struGain = NET_DVR_GAIN()
-    #     # cfg.struWhiteBalance = NET_DVR_WHITEBALANCE()
-    #     # cfg.struExposure = NET_DVR_EXPOSURE()
-    #     # cfg.struGammaCorrect = NET_DVR_GAMMACORRECT()
-    #     # cfg.struWdr = NET_DVR_WDR()
-    #     # cfg.struDayNight = NET_DVR_DAYNIGHT()
-    #     # cfg.struBackLight = NET_DVR_BACKLIGHT()
-    #     # cfg.struNoiseRemove = NET_DVR_NOISEREMOVE()
-    #     # cfg.struCmosModeCfg = NET_DVR_CMOSMODECFG()
-    #     a = h_ULONG(0)
-    #     res = self.call_cpp("NET_DVR_GetDVRConfig", self.user_id, 1067, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG), byref(a))
-    #     print(f"err is {self.get_last_error_code()}")
-    #     print(f"函数返回值{res}")
-    #     print(cfg.struDayNight.byDayNightFilterType)
-    #     return cfg
+    def get_dvr_config(self):
+        cfg = NET_DVR_CAMERAPARAMCFG()
+        # cfg.struVideoEffect = NET_DVR_VIDEOEFFECT()
+        # cfg.struGain = NET_DVR_GAIN()
+        # cfg.struWhiteBalance = NET_DVR_WHITEBALANCE()
+        # cfg.struExposure = NET_DVR_EXPOSURE()
+        # cfg.struGammaCorrect = NET_DVR_GAMMACORRECT()
+        # cfg.struWdr = NET_DVR_WDR()
+        # cfg.struDayNight = NET_DVR_DAYNIGHT()
+        # cfg.struBackLight = NET_DVR_BACKLIGHT()
+        # cfg.struNoiseRemove = NET_DVR_NOISEREMOVE()
+        # cfg.struCmosModeCfg = NET_DVR_CMOSMODECFG()
+        self.lib.NET_DVR_GetDVRConfig.argtypes = [h_LONG, h_DWORD, h_LONG, POINTER(NET_DVR_CAMERAPARAMCFG), h_DWORD, POINTER(h_DWORD)]
+        self.lib.NET_DVR_GetDVRConfig.restype = h_BOOL
+        a = h_DWORD(0)
+        if not self.lib.NET_DVR_GetDVRConfig(self.user_id, 1067, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG), byref(a)):
+            self.error("获取设备配置失败")
+        print(cfg.struDayNight.byDayNightFilterType)
+        return cfg
 
-    # def set_dvr_config(self):
-    #     cfg = self.get_dvr_config()
-    #     cfg.struDayNight.byDayNightFilterType = 6
-    #     res = self.call_cpp("NET_DVR_SetDVRConfig", self.user_id, 1068, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG))
-    #     print(f"err is {self.get_last_error_code()}")
-    #     print(f"函数返回值{res}")
-    #     a = 1
+    def set_dvr_config(self):
+        cfg = self.get_dvr_config()
+        cfg.struDayNight.byDayNightFilterType = 1
+        self.lib.NET_DVR_SetDVRConfig.argtypes = [h_LONG, h_DWORD, h_LONG, POINTER(NET_DVR_CAMERAPARAMCFG), h_DWORD, POINTER(h_DWORD)]
+        self.lib.NET_DVR_GetDVRConfig.restype = h_BOOL
+        res = self.call_cpp("NET_DVR_SetDVRConfig", self.user_id, 1068, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG))
+        print(f"err is {self.get_last_error_code()}")
+        print(f"函数返回值{res}")
+        a = 1
+
     def get_frame(self) -> np.ndarray:
         """
         读一帧图片
@@ -258,7 +265,9 @@ class HIKCamera:
         :param reason:
         :return:
         """
-        raise Exception(f"{reason}，错误码：{self.get_last_error_code()}")
+        error_code = self.get_last_error_code()
+        if error_code != 0:
+            raise Exception(f"{reason}，错误码：{error_code}")
 
     def _standard_real_data_callback(self,
                                      lRealHandle,
@@ -300,27 +309,15 @@ class HIKCamera:
             if self.play_control_port is None:
                 return
             if not self.play_lib.PlayM4_InputData(self.play_control_port, pBuffer, dwBufSize):
-                self.error("输入视频流错误")
-
-
-def t1est(ip):
-    camera = HIKCamera(ip=ip, user_name="admin", password="12345678a")
-    camera.start_preview(frame_buffer_size=10)
-    for i in range(100):
-        time.sleep(0.03)
-        print(f"{ip}:{len(camera.frames)}")
+                pass
+                # self.error("输入视频流错误")
 
 
 if __name__ == '__main__':
-    import threading
-
-    t1 = threading.Thread(target=t1est, args=("192.168.111.77",))
-    t1.start()
-    # t1est("192.168.111.77")
-    t2 = threading.Thread(target=t1est, args=("192.168.111.78",))
-    t2.start()
-    time.sleep(4)
-    # camera2 = HIKCamera(ip="192.168.111.78", user_name="admin", password="12345678a")
+    camera2 = HIKCamera(ip="192.168.111.78", user_name="admin", password="12345678a")
+    camera2.get_dvr_config()
+    camera2.set_dvr_config()
+    camera2.get_dvr_config()
     # camera2.start_preview(frame_buffer_size=10)
 
     # camera.set_real_data_callback()
