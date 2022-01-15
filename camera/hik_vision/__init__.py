@@ -206,16 +206,16 @@ class HIKCamera:
 
     def get_dvr_config(self):
         cfg = NET_DVR_CAMERAPARAMCFG()
-        # cfg.struVideoEffect = NET_DVR_VIDEOEFFECT()
-        # cfg.struGain = NET_DVR_GAIN()
-        # cfg.struWhiteBalance = NET_DVR_WHITEBALANCE()
-        # cfg.struExposure = NET_DVR_EXPOSURE()
-        # cfg.struGammaCorrect = NET_DVR_GAMMACORRECT()
-        # cfg.struWdr = NET_DVR_WDR()
-        # cfg.struDayNight = NET_DVR_DAYNIGHT()
-        # cfg.struBackLight = NET_DVR_BACKLIGHT()
-        # cfg.struNoiseRemove = NET_DVR_NOISEREMOVE()
-        # cfg.struCmosModeCfg = NET_DVR_CMOSMODECFG()
+        cfg.struVideoEffect = NET_DVR_VIDEOEFFECT()
+        cfg.struGain = NET_DVR_GAIN()
+        cfg.struWhiteBalance = NET_DVR_WHITEBALANCE()
+        cfg.struExposure = NET_DVR_EXPOSURE()
+        cfg.struGammaCorrect = NET_DVR_GAMMACORRECT()
+        cfg.struWdr = NET_DVR_WDR()
+        cfg.struDayNight = NET_DVR_DAYNIGHT()
+        cfg.struBackLight = NET_DVR_BACKLIGHT()
+        cfg.struNoiseRemove = NET_DVR_NOISEREMOVE()
+        cfg.struCmosModeCfg = NET_DVR_CMOSMODECFG()
         self.lib.NET_DVR_GetDVRConfig.argtypes = [h_LONG, h_DWORD, h_LONG, POINTER(NET_DVR_CAMERAPARAMCFG), h_DWORD, POINTER(h_DWORD)]
         self.lib.NET_DVR_GetDVRConfig.restype = h_BOOL
         a = h_DWORD(0)
@@ -226,13 +226,11 @@ class HIKCamera:
 
     def set_dvr_config(self):
         cfg = self.get_dvr_config()
-        cfg.struDayNight.byDayNightFilterType = 1
-        self.lib.NET_DVR_SetDVRConfig.argtypes = [h_LONG, h_DWORD, h_LONG, POINTER(NET_DVR_CAMERAPARAMCFG), h_DWORD, POINTER(h_DWORD)]
-        self.lib.NET_DVR_GetDVRConfig.restype = h_BOOL
-        res = self.call_cpp("NET_DVR_SetDVRConfig", self.user_id, 1068, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG))
-        print(f"err is {self.get_last_error_code()}")
-        print(f"函数返回值{res}")
-        a = 1
+        cfg.struDayNight.byDayNightFilterType = 6
+        self.lib.NET_DVR_SetDVRConfig.argtypes = [h_LONG, h_DWORD, h_LONG, POINTER(NET_DVR_CAMERAPARAMCFG), h_DWORD]
+        self.lib.NET_DVR_SetDVRConfig.restype = h_BOOL
+        if not self.lib.NET_DVR_SetDVRConfig(self.user_id, 1068, 0xFFFFFFFF, byref(cfg), sizeof(NET_DVR_CAMERAPARAMCFG)):
+            self.error("设置前端参数失败")
 
     def get_frame(self) -> np.ndarray:
         """
@@ -316,8 +314,8 @@ class HIKCamera:
 if __name__ == '__main__':
     camera2 = HIKCamera(ip="192.168.111.78", user_name="admin", password="12345678a")
     camera2.get_dvr_config()
-    camera2.set_dvr_config()
-    camera2.get_dvr_config()
+    # camera2.set_dvr_config()
+    # camera2.get_dvr_config()
     # camera2.start_preview(frame_buffer_size=10)
 
     # camera.set_real_data_callback()
