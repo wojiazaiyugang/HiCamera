@@ -2,23 +2,30 @@
 海康数据类型与ctypes类型映射
 """
 
-from ctypes import c_bool, c_char, c_byte, c_int, c_uint16, c_long, c_float, c_ulong, c_void_p, c_ubyte, c_uint
+from ctypes import c_bool, c_char, c_int, c_float, c_ulong, c_void_p, c_uint, c_char_p, c_ubyte, c_ushort, c_short, POINTER
 
-h_BOOL = c_bool
-h_CHAR = c_char
-h_BYTE = c_byte
-h_INT = c_int
-h_UINT = c_uint
-h_WORD = c_uint16
-h_LONG = c_long
-h_ULONG = c_ulong
-h_FLOAT = c_float
-h_DWORD = c_ulong  # 64bit:c_ulong    32bit:c_uint32
-h_UNSIGNED_CHAR = c_ubyte
-h_UBYTE = c_ubyte
-
-h_VOID_P = c_void_p
-h_HWND = c_void_p  # handle of window
-h_CHAR_P = c_ubyte
-h_BYTE_P = c_ubyte
-h_UNSIGNED_CHAR_P = h_CHAR_P
+BOOL = c_int
+# h_CHAR = c_char
+BYTE = c_ubyte
+INT = c_int
+UINT = c_uint
+USHORT = c_ushort
+LPVOID = c_void_p
+HANDLE = c_void_p
+HWND = c_void_p
+LPDWORD = POINTER(c_uint)
+WORD = c_ushort
+CHAR = c_char
+SHORT = c_short
+LONG = c_int
+# h_ULONG = c_ulong
+# h_FLOAT = c_float
+DWORD = c_uint
+UNSIGNED_CHAR = c_ubyte
+UBYTE = c_ubyte
+#
+# h_VOID_P = c_void_p
+# h_HWND = c_void_p  # handle of window
+CHAR_P = c_char_p
+# h_BYTE_P = c_ubyte
+# h_UNSIGNED_CHAR_P = h_CHAR_P
