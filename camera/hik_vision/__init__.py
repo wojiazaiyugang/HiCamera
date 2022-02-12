@@ -1,6 +1,6 @@
 import os
 import time
-from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, string_at, sizeof
+from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, string_at, sizeof, c_long
 from pathlib import Path
 
 import cv2
@@ -127,7 +127,7 @@ class HIKCamera:
         preview_info.bBlocked = 1
         self.lib.NET_DVR_RealPlay_V40.argtypes = [LONG, POINTER(NET_DVR_PREVIEWINFO), LPVOID, LPVOID]
         self.lib.NET_DVR_RealPlay_V40.restype = LONG
-        real_data_callback_type = CFUNCTYPE(None, LONG, DWORD, POINTER(UBYTE), DWORD, LPVOID)
+        real_data_callback_type = CFUNCTYPE(None, LONG, DWORD, POINTER(BYTE), DWORD, LPVOID)
         # noinspection PyAttributeOutsideInit
         # 见standard_real_data_callback中的注释
         self.standard_real_data_callback = real_data_callback_type(self._standard_real_data_callback)
@@ -269,7 +269,6 @@ class HIKCamera:
         :param dwBufSize:
         :return:
         """
-        print(111)
         if dwDataType == NET_DVR_SYSHEAD:
             self.play_lib.PlayM4_SetStreamOpenMode.argtypes = [INT, UINT]
             self.play_lib.PlayM4_SetStreamOpenMode.restype = INT
@@ -315,7 +314,8 @@ class HIKCamera:
 if __name__ == '__main__':
     camera = HIKCamera(ip="192.168.111.78", user_name="admin", password="12345678a")
     # camera.get_ability()
-    # config = camera.get_dvr_config()
+    config = camera.get_dvr_config()
+    print(config.struDayNight.byDayNightFilterType)
     # print(config)
     # camera.set_dvr_config()
     # camera2.get_dvr_config()
@@ -326,7 +326,7 @@ if __name__ == '__main__':
     camera.start_preview(frame_buffer_size=10)
     while True:
         frame = camera.get_frame()
-        print(frame)
+        print(frame.shape)
     # video = Path("/workspace/HiCamera/test.mp4")
     # camera.save_real_data(video)
     # time.sleep(3)

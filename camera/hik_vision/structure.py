@@ -3,7 +3,7 @@ c相关结构体
 """
 from ctypes import Structure
 
-from camera.hik_vision.type_map import CHAR, BYTE, WORD, LPVOID, BOOL, LONG, DWORD, HWND
+from camera.hik_vision.type_map import CHAR, BYTE, WORD, LPVOID, BOOL, LONG, DWORD, HWND, h_DWORD
 
 NET_DVR_SYSHEAD = 1
 NET_DVR_STREAMDATA = 2
@@ -166,7 +166,6 @@ class NET_DVR_Login_V40(Structure):
         ("lpDeviceInfo", NET_DVR_DEVICEINFO_V40)
     ]
 
-
 # noinspection PyPep8Naming
 class NET_DVR_PREVIEWINFO(Structure):
     """
@@ -177,9 +176,9 @@ class NET_DVR_PREVIEWINFO(Structure):
         # NET_DVR_GetDVRConfig(配置命令NET_DVR_GET_IPPARACFG_V40)获取（dwStartDChan）
         ('lChannel', LONG),
         # 码流类型：0-主码流，1-子码流，2-三码流，3-虚拟码流，以此类推
-        ('dwStreamType', DWORD),
+        ('dwStreamType', h_DWORD),
         # 连接方式：0-TCP方式，1-UDP方式，2-多播方式，3-RTP方式，4-RTP/RTSP，5-RTP/HTTP,6-HRUDP（可靠传输）
-        ('dwLinkMode', DWORD),
+        ('dwLinkMode', h_DWORD),
         # 播放窗口的句柄，为NULL表示不解码显示
         ('hPlayWnd', HWND),
         # 0-非阻塞取流，1- 阻塞取流
@@ -206,7 +205,7 @@ class NET_DVR_PREVIEWINFO(Structure):
         # （温度数据的加密信息，通过去加密运算，将原始数据算出真实的温度值）
         ('byVideoCodingType', BYTE),
         # 播放库播放缓冲区最大缓冲帧数，取值范围：1、6（默认，自适应播放模式）   15:置0时默认为1
-        ('dwDisplayBufNum', DWORD),
+        ('dwDisplayBufNum', h_DWORD),
         # NPQ模式：0- 直连模式，1-过流媒体模式
         ('byNPQMode', BYTE),
         # 保留，置为0
