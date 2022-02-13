@@ -166,6 +166,7 @@ class NET_DVR_Login_V40(Structure):
         ("lpDeviceInfo", NET_DVR_DEVICEINFO_V40)
     ]
 
+
 # noinspection PyPep8Naming
 class NET_DVR_PREVIEWINFO(Structure):
     """
@@ -409,4 +410,41 @@ class NET_DVR_LOCAL_SDK_PATH(Structure):
     _fields_ = [
         ("sPath", CHAR * 256),
         ("byRes", BYTE * 128)
+    ]
+
+
+class NET_DVR_COMPRESSION_INFO_V30(Structure):
+    _fields_ = [
+        ("byStreamType", BYTE),
+        ("byResolution", BYTE),
+        ("byBitrateType", BYTE),
+        ("byPicQuality", BYTE),
+        ("dwVideoBitrate", DWORD),
+        ("dwVideoFrameRate", DWORD),
+        ("wIntervalFrameI", WORD),
+        ("byIntervalBPFrame", BYTE),
+        ("byres1", BYTE),
+        ("byVideoEncType", BYTE),
+        ("byAudioEncType", BYTE),
+        ("byVideoEncComplexity", BYTE),
+        ("byEnableSvc", BYTE),
+        ("byFormatType", BYTE),
+        ("byAudioBitRate", BYTE),
+        ("bySteamSmooth", BYTE),
+        ("byAudioSamplingRate", BYTE),
+        ("bySmartCodec", BYTE),
+        ("byDepthMapEnable", BYTE),
+        ("wAverageVideoBitrate", WORD),
+
+    ]
+
+
+# noinspection PyPep8Naming,SpellCheckingInspection
+class NET_DVR_COMPRESSIONCFG_V30(Structure):
+    _fields_ = [
+        ("dwSize", DWORD),
+        ("struNormHighRecordPara", NET_DVR_COMPRESSION_INFO_V30),
+        ("struRes", NET_DVR_COMPRESSION_INFO_V30),
+        ("struEventRecordPara", NET_DVR_COMPRESSION_INFO_V30),
+        ("struNetPara", NET_DVR_COMPRESSION_INFO_V30)
     ]

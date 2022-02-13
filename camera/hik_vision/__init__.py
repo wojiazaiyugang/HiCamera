@@ -2,6 +2,7 @@ import os
 import time
 from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, string_at, sizeof, c_long
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -10,7 +11,8 @@ from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEI
     NET_DVR_CAMERAPARAMCFG, NET_DVR_VIDEOEFFECT, NET_DVR_GAIN, \
     NET_DVR_WHITEBALANCE, NET_DVR_GAMMACORRECT, NET_DVR_EXPOSURE, NET_DVR_WDR, NET_DVR_DAYNIGHT, NET_DVR_NOISEREMOVE, \
     NET_DVR_CMOSMODECFG, NET_DVR_TIME, NET_DVR_BACKLIGHT, \
-    NET_DVR_LOCAL_SDK_PATH, NET_DVR_SYSHEAD, NET_DVR_STREAMDATA, NET_DVR_AUDIOSTREAMDATA, NET_DVR_PRIVATE_DATA
+    NET_DVR_LOCAL_SDK_PATH, NET_DVR_SYSHEAD, NET_DVR_STREAMDATA, NET_DVR_AUDIOSTREAMDATA, NET_DVR_PRIVATE_DATA, \
+    NET_DVR_COMPRESSIONCFG_V30
 from camera.hik_vision.type_map import LONG, DWORD, BYTE, BOOL, LPVOID, UBYTE, CHAR, INT, UINT, UNSIGNED_CHAR, CHAR_P
 
 
@@ -35,6 +37,7 @@ class HIKCamera:
         if not self.lib.NET_DVR_Init():
             raise Exception(f"初始化失败：{self.get_last_error_code()}")
         self.play_lib = cdll.LoadLibrary(str(libs_dir.joinpath("libPlayCtrl.so")))
+        self.channel = None  # 通道号
         self.user_id = self._login(ip, user_name, password)
         self.preview_handle = None
         self.play_control_port = None  # 播放通道号
@@ -82,6 +85,10 @@ class HIKCamera:
             raise Exception(f"清理SDK失败：{self.get_last_error_code()}")
 
     def get_last_error_code(self) -> int:
+        """
+        操作出错，获取上一次的出错信息
+        :return:
+        """
         self.lib.NET_DVR_GetLastError.argtypes = []
         self.lib.NET_DVR_GetLastError.restype = DWORD
         return self.lib.NET_DVR_GetLastError()
@@ -106,6 +113,7 @@ class HIKCamera:
         if user_id == -1:
             raise Exception(f"登录异常：{self.get_last_error_code()}")
         else:
+            self.channel = device_info.struDeviceV30.byStartChan
             return user_id
 
     # def get_sdk_version(self) -> str:
@@ -156,7 +164,7 @@ class HIKCamera:
         if not self.lib.NET_DVR_StopRealPlay(self._get_preview_handle()):
             raise Exception(f"停止预览异常：{self.get_last_error_code()}")
 
-    def save_real_data(self, save_file: Path, stream_type: int = 1):
+    def save_real_data(self, save_file: Path, stream_type: int = 2):
         """
         保存录像
         :param save_file: 保存文件路径
@@ -197,28 +205,58 @@ class HIKCamera:
         else:
             self.error("获取播放通道号失败")
 
-    def get_dvr_config(self) -> NET_DVR_CAMERAPARAMCFG:
+    def _get_dvr_config(self, command: int, cfg: Any) -> Any:
         """
         获取设备的配置信息
         :return:
         """
-        cfg = NET_DVR_CAMERAPARAMCFG()
         self.lib.NET_DVR_GetDVRConfig.argtypes = [LONG, DWORD, LONG, LPVOID, DWORD, POINTER(DWORD)]
         self.lib.NET_DVR_GetDVRConfig.restype = BOOL
-        if not self.lib.NET_DVR_GetDVRConfig(self.user_id, 1067, 0xFFFFFFFF, byref(cfg), sizeof(cfg), byref(DWORD(0))):
-            self.error("获取设备配置失败")
+        if not self.lib.NET_DVR_GetDVRConfig(self.user_id, command, self.channel, byref(cfg), sizeof(cfg),
+                                             byref(DWORD(0))):
+            self.error(f"获取设备配置信息失败，command={command}， cfg={cfg}")
         return cfg
 
-    def set_dvr_config(self, cfg: NET_DVR_CAMERAPARAMCFG):
+    def _set_dvr_config(self, command: int, cfg: Any):
         """
         设置参数
         :param cfg:
         :return:
         """
-        self.lib.NET_DVR_SetDVRConfig.argtypes = [LONG, DWORD, LONG, POINTER(NET_DVR_CAMERAPARAMCFG), DWORD]
+        self.lib.NET_DVR_SetDVRConfig.argtypes = [LONG, DWORD, LONG, LPVOID, DWORD]
         self.lib.NET_DVR_SetDVRConfig.restype = BOOL
-        if not self.lib.NET_DVR_SetDVRConfig(self.user_id, 1068, 0xFFFFFFFF, byref(cfg), sizeof(cfg)):
-            self.error("设置前端参数失败")
+        if not self.lib.NET_DVR_SetDVRConfig(self.user_id, command, self.channel, byref(cfg), sizeof(cfg)):
+            self.error(f"设置参数失败，command={command}，cfg={cfg}")
+
+    def get_ccd_config(self) -> NET_DVR_CAMERAPARAMCFG:
+        """
+        获取前端参数
+        :return:
+        """
+        return self._get_dvr_config(1067, NET_DVR_CAMERAPARAMCFG())
+
+    def set_ccd_config(self, cfg: NET_DVR_CAMERAPARAMCFG):
+        """
+        设置前端参数
+        :param cfg:
+        :return:
+        """
+        self._set_dvr_config(1068, cfg)
+
+    def get_compress_config(self) -> NET_DVR_COMPRESSIONCFG_V30:
+        """
+        获取图像压缩参数
+        :return:
+        """
+        return self._get_dvr_config(1040, NET_DVR_COMPRESSIONCFG_V30())
+
+    def set_compress_config(self, cfg: NET_DVR_COMPRESSIONCFG_V30):
+        """
+        设置图像压缩参数
+        :param cfg:
+        :return:
+        """
+        self._set_dvr_config(1041, cfg)
 
     def get_frame(self) -> np.ndarray:
         """
@@ -299,23 +337,23 @@ class HIKCamera:
                 pass
                 # self.error("输入视频流错误")
 
-    def get_ability(self):
-        self.lib.NET_DVR_GetDeviceAbility.argtypes = [LONG, DWORD, CHAR_P, DWORD, CHAR_P, DWORD]
-        self.lib.NET_DVR_GetDeviceAbility.restype = BOOL
-        s = bytes("123"*2000, encoding=self.encoding)
-        # ss = h_CHAR_P(s)
-        out = bytes("123"*2000, encoding=self.encoding)
-        if not self.lib.NET_DVR_GetDeviceAbility(self.user_id, 0x009, CHAR_P(s), len(s), out, len(out)):
-            self.error("")
-
-        a=  1
+    # def get_ability(self):
+    #     self.lib.NET_DVR_GetDeviceAbility.argtypes = [LONG, DWORD, CHAR_P, DWORD, CHAR_P, DWORD]
+    #     self.lib.NET_DVR_GetDeviceAbility.restype = BOOL
+    #     s = bytes("123" * 2000, encoding=self.encoding)
+    #     # ss = h_CHAR_P(s)
+    #     out = bytes("123" * 2000, encoding=self.encoding)
+    #     if not self.lib.NET_DVR_GetDeviceAbility(self.user_id, 0x009, CHAR_P(s), len(s), out, len(out)):
+    #         self.error("")
+    #
+    #     a = 1
 
 
 if __name__ == '__main__':
     camera = HIKCamera(ip="192.168.111.78", user_name="admin", password="12345678a")
     # camera.get_ability()
-    config = camera.get_dvr_config()
-    print(config.struDayNight.byDayNightFilterType)
+    # config = camera._get_dvr_config()
+    # print(config.struDayNight.byDayNightFilterType)
     # print(config)
     # camera.set_dvr_config()
     # camera2.get_dvr_config()
@@ -323,13 +361,13 @@ if __name__ == '__main__':
 
     # camera.set_real_data_callback()
     # camera.get_play_control_port()
-    camera.start_preview(frame_buffer_size=10)
-    while True:
-        frame = camera.get_frame()
-        print(frame.shape)
-    # video = Path("/workspace/HiCamera/test.mp4")
-    # camera.save_real_data(video)
-    # time.sleep(3)
+    # camera.start_preview(frame_buffer_size=10)
+    config = camera.get_ccd_config()
+    config.struDayNight.byDayNightFilterType = 0  # 白天
+    camera.set_ccd_config(config)
+    video = Path("/workspace/HiCamera/test.mp4")
+    camera.save_real_data(video)
+    time.sleep(1)
 
     # play_lib.PlayM4_Stop(0)
     # play_lib.PlayM4_CloseFile(0)
