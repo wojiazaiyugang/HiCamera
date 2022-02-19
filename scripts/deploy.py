@@ -17,7 +17,7 @@ if __name__ == '__main__':
     os.chdir(build_dir)
     os.system(f"python -m nuitka --module --remove-output --no-pyi-file --include-package=camera ../../camera")
     # 复制测试脚本
-    for script_name in ["real_data.py", "save_video.py"]:
+    for script_name in []:
         shutil.copy(Path(__file__).parent.joinpath(script_name), build_dir.joinpath(script_name))
     # 复制依赖的库
     src_libs_dir = project_dir.joinpath("camera").joinpath("hik_vision").joinpath("libs")

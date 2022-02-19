@@ -45,7 +45,11 @@ class HIKCamera:
         self.frame_buffer_size = None
 
     def __del__(self):
-        self.clean_sdk()
+        try:
+            self._logout()
+            self.clean_sdk()
+        except Exception:
+            pass
 
     # def stop_play(self):
     #     """
@@ -138,7 +142,11 @@ class HIKCamera:
         real_data_callback_type = CFUNCTYPE(None, LONG, DWORD, POINTER(BYTE), DWORD, LPVOID)
         # noinspection PyAttributeOutsideInit
         # 见standard_real_data_callback中的注释
-        self.standard_real_data_callback = real_data_callback_type(self._standard_real_data_callback)
+        if frame_buffer_size:
+            self.standard_real_data_callback = real_data_callback_type(self._standard_real_data_callback)
+        else:
+            # noinspection PyAttributeOutsideInit
+            self.standard_real_data_callback = None
         self.preview_handle = self.lib.NET_DVR_RealPlay_V40(self.user_id, byref(preview_info),
                                                             self.standard_real_data_callback, None)
         if self.preview_handle == -1:
