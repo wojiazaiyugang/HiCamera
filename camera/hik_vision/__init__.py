@@ -345,6 +345,27 @@ class HIKCamera:
                 pass
                 # self.error("输入视频流错误")
 
+    def ptz_control(self, command: int, command_type: int, speed: int):
+        """
+        云台控制
+        :param command_type: 0 - 开始执行命令 1 - 停止执行命令
+        :param command:
+        11：焦距变大（倍率变大）
+        12：焦距变小（倍率变小）
+        21：云台上仰
+        22：云台下俯
+        23：云台左转
+        24：云台右转
+
+        :param speed: 云台速度，1-7
+        :return:
+        """
+        self.lib.NET_DVR_PTZControlWithSpeed_Other.argtypes = [LONG, LONG, DWORD, DWORD, DWORD]
+        self.lib.NET_DVR_PTZControlWithSpeed_Other.restype = BOOL
+        res = self.lib.NET_DVR_PTZControlWithSpeed_Other(self.user_id, self.channel, command, command_type, speed)
+        if not res:
+            self.error("云台控制错误")
+
     # def get_ability(self):
     #     self.lib.NET_DVR_GetDeviceAbility.argtypes = [LONG, DWORD, CHAR_P, DWORD, CHAR_P, DWORD]
     #     self.lib.NET_DVR_GetDeviceAbility.restype = BOOL
@@ -358,7 +379,36 @@ class HIKCamera:
 
 
 if __name__ == '__main__':
-    camera = HIKCamera(ip="192.168.111.78", user_name="admin", password="12345678a")
+    camera = HIKCamera(ip="192.168.111.75", user_name="admin", password="12345678a")
+    camera.start_preview()
+    video = Path("/workspace/HiCamera/test.mp4")
+    camera.save_real_data(video)
+    for i in range(2):
+        camera.ptz_control(command=11, command_type=0, speed=1)
+        time.sleep(2)
+        camera.ptz_control(command=11, command_type=1, speed=1)
+
+        camera.ptz_control(command=21, command_type=0, speed=1)
+        time.sleep(2)
+        camera.ptz_control(command=21, command_type=1, speed=1)
+
+        camera.ptz_control(command=22, command_type=0, speed=1)
+        time.sleep(2)
+        camera.ptz_control(command=22, command_type=1, speed=1)
+
+        camera.ptz_control(command=23, command_type=0, speed=1)
+        time.sleep(2)
+        camera.ptz_control(command=23, command_type=1, speed=1)
+
+        camera.ptz_control(command=24, command_type=0, speed=1)
+        time.sleep(2)
+        camera.ptz_control(command=24, command_type=1, speed=1)
+
+        camera.ptz_control(command=12, command_type=0, speed=1)
+        time.sleep(2)
+        camera.ptz_control(command=12, command_type=1, speed=1)
+    camera.stop_save_real_data()
+    camera.start_preview()
     # camera.get_ability()
     # config = camera._get_dvr_config()
     # print(config.struDayNight.byDayNightFilterType)
@@ -370,12 +420,11 @@ if __name__ == '__main__':
     # camera.set_real_data_callback()
     # camera.get_play_control_port()
     # camera.start_preview(frame_buffer_size=10)
-    config = camera.get_ccd_config()
-    config.struDayNight.byDayNightFilterType = 0  # 白天
-    camera.set_ccd_config(config)
-    video = Path("/workspace/HiCamera/test.mp4")
-    camera.save_real_data(video)
-    time.sleep(1)
+    # config = camera.get_ccd_config()
+    # config.struDayNight.byDayNightFilterType = 0  # 白天
+    # camera.set_ccd_config(config)
+
+    # time.sleep(1)
 
     # play_lib.PlayM4_Stop(0)
     # play_lib.PlayM4_CloseFile(0)
