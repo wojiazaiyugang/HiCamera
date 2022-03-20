@@ -397,11 +397,11 @@ if __name__ == '__main__':
         camera.ptz_control(command=22, command_type=1, speed=1)
 
         camera.ptz_control(command=23, command_type=0, speed=1)
-        time.sleep(2)
+        time.sleep(5)
         camera.ptz_control(command=23, command_type=1, speed=1)
 
         camera.ptz_control(command=24, command_type=0, speed=1)
-        time.sleep(2)
+        time.sleep(10)
         camera.ptz_control(command=24, command_type=1, speed=1)
 
         camera.ptz_control(command=12, command_type=0, speed=1)
