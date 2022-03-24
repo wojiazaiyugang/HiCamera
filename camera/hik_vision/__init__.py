@@ -12,7 +12,7 @@ from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEI
     NET_DVR_WHITEBALANCE, NET_DVR_GAMMACORRECT, NET_DVR_EXPOSURE, NET_DVR_WDR, NET_DVR_DAYNIGHT, NET_DVR_NOISEREMOVE, \
     NET_DVR_CMOSMODECFG, NET_DVR_TIME, NET_DVR_BACKLIGHT, \
     NET_DVR_LOCAL_SDK_PATH, NET_DVR_SYSHEAD, NET_DVR_STREAMDATA, NET_DVR_AUDIOSTREAMDATA, NET_DVR_PRIVATE_DATA, \
-    NET_DVR_COMPRESSIONCFG_V30
+    NET_DVR_COMPRESSIONCFG_V30, NET_DVR_PACKET_INFO_EX
 from camera.hik_vision.type_map import LONG, DWORD, BYTE, BOOL, LPVOID, UBYTE, CHAR, INT, UINT, UNSIGNED_CHAR, CHAR_P
 
 
@@ -126,6 +126,28 @@ class HIKCamera:
     #     :return:
     #     """
     #     return hex(self.call_cpp("NET_DVR_GetSDKVersion"))
+    def _real_play_callback(self, lPreviewHandle, pstruPackInfo, pUser):
+
+        # print(dir(pstruPackInfo))
+        # print(pstruPackInfo.contents.dwYear, pstruPackInfo.contents.dwMonth, pstruPackInfo.contents.dwDay,
+        #       pstruPackInfo.contents.dwHour, pstruPackInfo.contents.dwMinute, pstruPackInfo.contents.dwSecond,
+        #       pstruPackInfo.contents.dwMillisecond, pstruPackInfo.contents.dwTimeStamp,
+        #       pstruPackInfo.contents.dwTimeStampHigh , datetime.datetime.now())
+        # if self.frame_buffer_size is None:
+        #     return
+        # if pstruPackInfo.contents.dwPacketType != 3:
+        #     return
+        print("回调一帧")
+        # print(pstruPackInfo.contents.dwPacketType  )
+        # print(pstruPackInfo.contents.dwPacketSize)
+        # bytes_data = string_at(pstruPackInfo.contents.pPacketBuffer, pstruPackInfo.contents.dwPacketSize)
+        # np_data = np.frombuffer(bytes_data, dtype=np.uint8)
+        # img = np_data.reshape(pstruPackInfo.contents.wHeight * 3 // 2, pstruPackInfo.contents.wWidth)
+        # print(img.shape)
+        # img = cv2.cvtColor(img, cv2.COLOR_YUV2BGR_YV12)
+        # self.frames.append(img)
+        # if len(self.frames) > self.frame_buffer_size:
+        #     del self.frames[0]
 
     def start_preview(self, frame_buffer_size: int = None) -> int:
         """
@@ -151,6 +173,12 @@ class HIKCamera:
                                                             self.standard_real_data_callback, None)
         if self.preview_handle == -1:
             raise Exception(f"预览失败：{self.get_last_error_code()}")
+        # self.lib.NET_DVR_SetESRealPlayCallBack.argtypes = [LONG, LPVOID, LPVOID]
+        # self.lib.NET_DVR_SetESRealPlayCallBack.restype = BOOL
+        # callback_type = CFUNCTYPE(None, LONG, POINTER(NET_DVR_PACKET_INFO_EX), LPVOID)
+        # self._real_play_callback = callback_type(self._real_play_callback)
+        # if not self.lib.NET_DVR_SetESRealPlayCallBack(self.preview_handle, self._real_play_callback, LPVOID()):
+        #     self.error("!")
         return self.preview_handle
 
     def _get_preview_handle(self) -> int:
@@ -326,8 +354,7 @@ class HIKCamera:
                 self.error("开启播放流错误")
             self.play_lib.PlayM4_SetDisplayCallBack.argtypes = [INT, LPVOID]
             self.play_lib.PlayM4_SetDisplayCallBack.restype = INT
-            display_callback_type = CFUNCTYPE(None, LONG, POINTER(CHAR), LONG, LONG, LONG, LONG, LONG,
-                                              LONG)
+            display_callback_type = CFUNCTYPE(None, LONG, POINTER(CHAR), LONG, LONG, LONG, LONG, LONG, LONG)
             # noinspection PyAttributeOutsideInit
             # 用于解决ctypes的回调函数中无法访问self的问题，详见
             # https://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes/65174074#65174074

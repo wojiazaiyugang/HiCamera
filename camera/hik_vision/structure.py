@@ -1,9 +1,9 @@
 """
 c相关结构体
 """
-from ctypes import Structure
+from ctypes import Structure, POINTER
 
-from camera.hik_vision.type_map import CHAR, BYTE, WORD, LPVOID, BOOL, LONG, DWORD, HWND, h_DWORD
+from camera.hik_vision.type_map import CHAR, BYTE, WORD, LPVOID, BOOL, LONG, DWORD, HWND, h_DWORD, UNSIGNED_CHAR
 
 NET_DVR_SYSHEAD = 1
 NET_DVR_STREAMDATA = 2
@@ -447,4 +447,31 @@ class NET_DVR_COMPRESSIONCFG_V30(Structure):
         ("struRes", NET_DVR_COMPRESSION_INFO_V30),
         ("struEventRecordPara", NET_DVR_COMPRESSION_INFO_V30),
         ("struNetPara", NET_DVR_COMPRESSION_INFO_V30)
+    ]
+
+
+class NET_DVR_PACKET_INFO_EX(Structure):
+    _fields_ = [
+        ("wWidth", WORD),
+        ("wHeight", WORD),
+        ("dwTimeStamp", DWORD),
+        ("dwTimeStampHigh", DWORD),
+        ("dwYear", DWORD),
+        ("dwMonth", DWORD),
+        ("dwDay", DWORD),
+        ("dwHour", DWORD),
+        ("dwMinute", DWORD),
+        ("dwSecond", DWORD),
+        ("dwMillisecond", DWORD),
+        ("dwFrameNum", DWORD),
+        ("dwFrameRate", DWORD),
+        ("dwFlag", DWORD),
+        ("dwFilePos", DWORD),
+        ("dwPacketType", DWORD),
+        ("dwPacketSize", DWORD),
+        ("pPacketBuffer", POINTER(UNSIGNED_CHAR)),
+        ("byRes1", BYTE * 4),
+        ("dwPacketMode", DWORD),
+        ("byRes2", BYTE * 16),
+        ("dwReserved", DWORD * 6)
     ]
