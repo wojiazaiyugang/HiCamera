@@ -24,6 +24,9 @@ if __name__ == '__main__':
     dst_libs_dir = build_dir.joinpath("camera").joinpath("hik_vision")
     dst_libs_dir.mkdir(parents=True)
     shutil.copytree(src_libs_dir, dst_libs_dir.joinpath("libs"))
+    # 复制第三方库
+    name = "h264decoder.cpython-37m-x86_64-linux-gnu.so"
+    shutil.copyfile(str(project_dir.joinpath(name)), str(build_dir.joinpath(name)))
     print(f"打包成功{build_dir}")
 
 

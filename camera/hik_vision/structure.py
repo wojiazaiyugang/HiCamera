@@ -3,7 +3,7 @@ c相关结构体
 """
 from ctypes import Structure, POINTER
 
-from camera.hik_vision.type_map import CHAR, BYTE, WORD, LPVOID, BOOL, LONG, DWORD, HWND, h_DWORD, UNSIGNED_CHAR
+from camera.hik_vision.type_map import CHAR, BYTE, WORD, LPVOID, BOOL, LONG, DWORD, HWND, h_DWORD, UNSIGNED_CHAR, h_WORD
 
 NET_DVR_SYSHEAD = 1
 NET_DVR_STREAMDATA = 2
@@ -450,6 +450,7 @@ class NET_DVR_COMPRESSIONCFG_V30(Structure):
     ]
 
 
+# noinspection PyPep8Naming
 class NET_DVR_PACKET_INFO_EX(Structure):
     _fields_ = [
         ("wWidth", WORD),
