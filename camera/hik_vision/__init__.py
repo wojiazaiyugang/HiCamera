@@ -144,7 +144,7 @@ class HIKCamera:
                                       hour=pstruPackInfo.contents.dwHour,
                                       minute=pstruPackInfo.contents.dwMinute,
                                       second=pstruPackInfo.contents.dwSecond,
-                                      microsecond=pstruPackInfo.contents.dwMillisecond)
+                                      microsecond=pstruPackInfo.contents.dwMillisecond*1000)
                 self.frames.append(Frame(data=frame,
                                          frame_time=frame_time,
                                          osd_time=frame_time))
