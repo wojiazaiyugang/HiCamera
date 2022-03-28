@@ -12,5 +12,4 @@ class Frame:
     """
     data: np.ndarray  # 数据帧 opencv格式
     frame_time: datetime  # 数据帧时间戳
-    osd_time: Optional[datetime]  # OSD时间
 

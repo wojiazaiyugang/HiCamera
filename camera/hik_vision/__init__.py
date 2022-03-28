@@ -146,8 +146,7 @@ class HIKCamera:
                                       second=pstruPackInfo.contents.dwSecond,
                                       microsecond=pstruPackInfo.contents.dwMillisecond*1000)
                 self.frames.append(Frame(data=frame,
-                                         frame_time=frame_time,
-                                         osd_time=frame_time))
+                                         frame_time=frame_time))
                 # print(frame_time, pstruPackInfo.contents.dwTimeStamp, pstruPackInfo.contents.dwTimeStampHigh)
                 if len(self.frames) > self.frame_buffer_size:
                     del self.frames[0]
