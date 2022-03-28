@@ -38,7 +38,7 @@ class HIKCamera:
         self.lib.NET_DVR_Init.argtypes = []
         self.lib.NET_DVR_Init.restype = BOOL
         if not self.lib.NET_DVR_Init():
-            raise Exception(f"初始化失败：{self.get_last_error_code()}")
+            raise Exception(f"初始化失败：{self._get_last_error_code()}")
         self.play_lib = cdll.LoadLibrary(str(libs_dir.joinpath("libPlayCtrl.so")))
         self.channel = None  # 通道号
         self.user_id = self._login(ip, user_name, password)
@@ -50,7 +50,7 @@ class HIKCamera:
 
     def __del__(self):
         self._logout()
-        self.clean_sdk()
+        self._clean_sdk()
 
     # def stop_play(self):
     #     """
@@ -77,9 +77,9 @@ class HIKCamera:
         self.lib.NET_DVR_Logout.argtypes = [LONG]
         self.lib.NET_DVR_Logout.restype = BOOL
         if not self.lib.NET_DVR_Logout(self._get_preview_handle()):
-            self.error(f"登出错误")
+            self._error(f"登出错误")
 
-    def clean_sdk(self):
+    def _clean_sdk(self):
         """
         不再使用时清理相机
         :return:
@@ -87,9 +87,9 @@ class HIKCamera:
         self.lib.NET_DVR_Cleanup.argtypes = []
         self.lib.NET_DVR_Cleanup.restype = BOOL
         if not self.lib.NET_DVR_Cleanup():
-            raise Exception(f"清理SDK失败：{self.get_last_error_code()}")
+            raise Exception(f"清理SDK失败：{self._get_last_error_code()}")
 
-    def get_last_error_code(self) -> int:
+    def _get_last_error_code(self) -> int:
         """
         操作出错，获取上一次的出错信息
         :return:
@@ -116,7 +116,7 @@ class HIKCamera:
         self.lib.NET_DVR_Login_V40.restype = LONG
         user_id = self.lib.NET_DVR_Login_V40(byref(user_login_info), byref(device_info))
         if user_id == -1:
-            raise Exception(f"登录异常：{self.get_last_error_code()}")
+            raise Exception(f"登录异常：{self._get_last_error_code()}")
         else:
             self.channel = device_info.struDeviceV30.byStartChan
             return user_id
@@ -185,7 +185,7 @@ class HIKCamera:
         #     self.standard_real_data_callback = None
         self.preview_handle = self.lib.NET_DVR_RealPlay_V40(self.user_id, byref(preview_info), None, None)
         if self.preview_handle == -1:
-            raise Exception(f"预览失败：{self.get_last_error_code()}")
+            raise Exception(f"预览失败：{self._get_last_error_code()}")
         if frame_buffer_size:
             cfg = self.get_compress_config()
             if cfg.struNormHighRecordPara.byVideoEncType != 1:
@@ -197,16 +197,16 @@ class HIKCamera:
             callback_type = CFUNCTYPE(None, LONG, POINTER(NET_DVR_PACKET_INFO_EX), LPVOID)
             self._real_play_callback = callback_type(self._real_play_callback)
             if not self.lib.NET_DVR_SetESRealPlayCallBack(self.preview_handle, self._real_play_callback, LPVOID()):
-                self.error("实时数据回调错误")
+                self._error("实时数据回调错误")
         return self.preview_handle
 
-    def stop_real_data_callback(self):
+    def _stop_real_data_callback(self):
         """
         停止实时回调
         :return:
         """
         if not self.lib.NET_DVR_SetESRealPlayCallBack(self.preview_handle, None, LPVOID()):
-            self.error("停止实时数据回调错误")
+            self._error("停止实时数据回调错误")
 
     def _get_preview_handle(self) -> int:
         """
@@ -225,9 +225,9 @@ class HIKCamera:
         self.lib.NET_DVR_StopRealPlay.argtypes = [LONG]
         self.lib.NET_DVR_StopRealPlay.restype = BOOL
         if self.frame_buffer_size:
-            self.stop_real_data_callback()
+            self._stop_real_data_callback()
         if not self.lib.NET_DVR_StopRealPlay(self._get_preview_handle()):
-            raise Exception(f"停止预览异常：{self.get_last_error_code()}")
+            raise Exception(f"停止预览异常：{self._get_last_error_code()}")
 
     def save_real_data(self, save_file: Path, stream_type: int = 2):
         """
@@ -242,7 +242,7 @@ class HIKCamera:
         self.lib.NET_DVR_SaveRealData_V30.restype = BOOL
         if not self.lib.NET_DVR_SaveRealData_V30(self._get_preview_handle(), stream_type,
                                                  c_char_p(bytes(str(save_file), self.encoding))):
-            self.error("保存录像异常")
+            self._error("保存录像异常")
 
     def stop_save_real_data(self):
         """
@@ -252,7 +252,7 @@ class HIKCamera:
         self.lib.NET_DVR_StopSaveRealData.argtypes = [LONG]
         self.lib.NET_DVR_StopSaveRealData.restype = BOOL
         if not self.lib.NET_DVR_StopSaveRealData(self._get_preview_handle()):
-            self.error("停止数据捕获异常")
+            self._error("停止数据捕获异常")
 
     # def _get_play_control_port(self) -> int:
     #     """
@@ -279,7 +279,7 @@ class HIKCamera:
         self.lib.NET_DVR_GetDVRConfig.restype = BOOL
         if not self.lib.NET_DVR_GetDVRConfig(self.user_id, command, self.channel, byref(cfg), sizeof(cfg),
                                              byref(DWORD(0))):
-            self.error(f"获取设备配置信息失败，command={command}， cfg={cfg}")
+            self._error(f"获取设备配置信息失败，command={command}， cfg={cfg}")
         return cfg
 
     def _set_dvr_config(self, command: int, cfg: Any):
@@ -291,7 +291,7 @@ class HIKCamera:
         self.lib.NET_DVR_SetDVRConfig.argtypes = [LONG, DWORD, LONG, LPVOID, DWORD]
         self.lib.NET_DVR_SetDVRConfig.restype = BOOL
         if not self.lib.NET_DVR_SetDVRConfig(self.user_id, command, self.channel, byref(cfg), sizeof(cfg)):
-            self.error(f"设置参数失败，command={command}，cfg={cfg}")
+            self._error(f"设置参数失败，command={command}，cfg={cfg}")
 
     def get_ccd_config(self) -> NET_DVR_CAMERAPARAMCFG:
         """
@@ -348,13 +348,13 @@ class HIKCamera:
     #     if len(self.frames) > self.frame_buffer_size:
     #         del self.frames[0]
 
-    def error(self, reason: str):
+    def _error(self, reason: str):
         """
         报错
         :param reason:
         :return:
         """
-        error_code = self.get_last_error_code()
+        error_code = self._get_last_error_code()
         if error_code != 0:
             raise Exception(f"{reason}，错误码：{error_code}")
 
@@ -420,7 +420,7 @@ class HIKCamera:
         self.lib.NET_DVR_PTZControlWithSpeed_Other.restype = BOOL
         res = self.lib.NET_DVR_PTZControlWithSpeed_Other(self.user_id, self.channel, command, command_type, speed)
         if not res:
-            self.error("云台控制错误")
+            self._error("云台控制错误")
 
     # def get_ability(self):
     #     self.lib.NET_DVR_GetDeviceAbility.argtypes = [LONG, DWORD, CHAR_P, DWORD, CHAR_P, DWORD]

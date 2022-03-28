@@ -23,8 +23,8 @@ class Test(unittest.TestCase):
         测试延迟
         :return:
         """
-        # 延迟小于1ms
-        self.assertLess(ping(self.camera_ip), 0.001)
+        # 延迟小于10ms
+        self.assertLess(ping(self.camera_ip), 0.01)
 
     def test_record(self):
         """
@@ -35,10 +35,11 @@ class Test(unittest.TestCase):
         self.camera.start_preview()
         self.camera.save_real_data(output_video)
         time.sleep(1)
+        self.camera.stop_save_real_data()
         self.camera.stop_preview()
         video = cv2.VideoCapture(str(output_video))
         self.assertEqual(int(video.get(cv2.CAP_PROP_FPS)), 25)
-        self.assertGreater(video.get(cv2.CAP_PROP_FRAME_COUNT), 20)
+        self.assertGreater(video.get(cv2.CAP_PROP_FRAME_COUNT), 15)
         self.assertLess(video.get(cv2.CAP_PROP_FRAME_COUNT), 30)
 
     def test_get_frame(self):
