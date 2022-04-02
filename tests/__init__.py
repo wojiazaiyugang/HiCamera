@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from camera import HIKCamera
+
 
 def get_test_output_dir() -> Path:
     """
@@ -18,3 +20,11 @@ def get_test_output(file: str) -> Path:
     :return:
     """
     return get_test_output_dir().joinpath(file)
+
+
+def get_hik_camera() -> HIKCamera:
+    """
+    获取用于测试的海康相机
+    :return:
+    """
+    return HIKCamera(ip="192.168.111.77", user_name="admin", password="12345678a")

@@ -31,6 +31,9 @@ class HIKCamera:
         :param user_name: 用户名
         :param password: 密码
         """
+        self.ip = ip
+        self.user_name = user_name
+        self.password = password
         self.encoding = "utf-8"
         libs_dir = Path(__file__).parent.joinpath("libs")
         os.chdir(libs_dir)
@@ -48,9 +51,9 @@ class HIKCamera:
         self.frame_buffer_size = None
         self.h264decoder = None
 
-    def __del__(self):
-        self._logout()
-        self._clean_sdk()
+    # def __del__(self):
+    #     self._logout()
+    #     self._clean_sdk()
 
     # def stop_play(self):
     #     """
@@ -144,11 +147,10 @@ class HIKCamera:
                                       hour=pstruPackInfo.contents.dwHour,
                                       minute=pstruPackInfo.contents.dwMinute,
                                       second=pstruPackInfo.contents.dwSecond,
-                                      microsecond=pstruPackInfo.contents.dwMillisecond*1000)
+                                      microsecond=pstruPackInfo.contents.dwMillisecond * 1000)
                 self.frames.append(Frame(data=frame,
                                          frame_time=frame_time))
-                # print(frame_time, pstruPackInfo.contents.dwTimeStamp, pstruPackInfo.contents.dwTimeStampHigh)
-                if len(self.frames) > self.frame_buffer_size:
+                if self.frame_buffer_size and len(self.frames) > self.frame_buffer_size:
                     del self.frames[0]
 
     def start_preview(self, frame_buffer_size: int = None) -> int:
@@ -195,6 +197,9 @@ class HIKCamera:
             self.lib.NET_DVR_SetESRealPlayCallBack.argtypes = [LONG, LPVOID, LPVOID]
             self.lib.NET_DVR_SetESRealPlayCallBack.restype = BOOL
             callback_type = CFUNCTYPE(None, LONG, POINTER(NET_DVR_PACKET_INFO_EX), LPVOID)
+            # 用于解决ctypes的回调函数中无法访问self的问题，详见
+            # https://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes/65174074#65174074
+            # noinspection PyAttributeOutsideInit
             self._real_play_callback = callback_type(self._real_play_callback)
             if not self.lib.NET_DVR_SetESRealPlayCallBack(self.preview_handle, self._real_play_callback, LPVOID()):
                 self._error("实时数据回调错误")
