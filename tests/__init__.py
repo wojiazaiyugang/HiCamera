@@ -27,4 +27,4 @@ def get_hik_camera() -> HIKCamera:
     获取用于测试的海康相机
     :return:
     """
-    return HIKCamera(ip="192.168.111.77", user_name="admin", password="12345678a")
+    return HIKCamera(ip="192.168.111.78", user_name="admin", password="12345678a")

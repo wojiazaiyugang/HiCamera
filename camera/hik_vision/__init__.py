@@ -45,15 +45,17 @@ class HIKCamera:
         self.play_lib = cdll.LoadLibrary(str(libs_dir.joinpath("libPlayCtrl.so")))
         self.channel = None  # 通道号
         self.user_id = self._login(ip, user_name, password)
+        # print(f"user id is {self.user_id}")
         self.preview_handle = None
         self.play_control_port = None  # 播放通道号
         self.frames: List[Frame] = []  # frame buffer
         self.frame_buffer_size = None
         self.h264decoder = None
+        self.recording = False  # 正在保存录像
 
-    # def __del__(self):
-    #     self._logout()
-    #     self._clean_sdk()
+    def __del__(self):
+        self._logout()
+        self._clean_sdk()
 
     # def stop_play(self):
     #     """
@@ -79,7 +81,7 @@ class HIKCamera:
     def _logout(self):
         self.lib.NET_DVR_Logout.argtypes = [LONG]
         self.lib.NET_DVR_Logout.restype = BOOL
-        if not self.lib.NET_DVR_Logout(self._get_preview_handle()):
+        if not self.lib.NET_DVR_Logout(self.user_id):
             self._error(f"登出错误")
 
     def _clean_sdk(self):
@@ -203,6 +205,7 @@ class HIKCamera:
             self._real_play_callback = callback_type(self._real_play_callback)
             if not self.lib.NET_DVR_SetESRealPlayCallBack(self.preview_handle, self._real_play_callback, LPVOID()):
                 self._error("实时数据回调错误")
+        # print(f"preview handle is {self.preview_handle}")
         return self.preview_handle
 
     def _stop_real_data_callback(self):
@@ -227,12 +230,14 @@ class HIKCamera:
         停止预览
         :return:
         """
+        if self.preview_handle is None:
+            raise Exception(f"没有开启预览")
         self.lib.NET_DVR_StopRealPlay.argtypes = [LONG]
         self.lib.NET_DVR_StopRealPlay.restype = BOOL
         if self.frame_buffer_size:
             self._stop_real_data_callback()
-        if not self.lib.NET_DVR_StopRealPlay(self._get_preview_handle()):
-            raise Exception(f"停止预览异常：{self._get_last_error_code()}")
+        if not self.lib.NET_DVR_StopRealPlay(self.preview_handle):
+            self._error("停止预览异常")
 
     def save_real_data(self, save_file: Path, stream_type: int = 2):
         """
@@ -243,21 +248,29 @@ class HIKCamera:
         2: avc1
         :return:
         """
+        if self.preview_handle is None:
+            self._error("相机未启动预览，无法保存视频")
+        if self.recording:
+            self._error("已经在录像中，无法再次录像")
         self.lib.NET_DVR_SaveRealData_V30.argtypes = [LONG, DWORD, POINTER(CHAR)]
         self.lib.NET_DVR_SaveRealData_V30.restype = BOOL
-        if not self.lib.NET_DVR_SaveRealData_V30(self._get_preview_handle(), stream_type,
+        if not self.lib.NET_DVR_SaveRealData_V30(self.preview_handle, stream_type,
                                                  c_char_p(bytes(str(save_file), self.encoding))):
             self._error("保存录像异常")
+        self.recording = True
 
     def stop_save_real_data(self):
         """
         停止数据捕获
         :return:
         """
+        if not self.recording:
+            self._error("没有在保存录像")
         self.lib.NET_DVR_StopSaveRealData.argtypes = [LONG]
         self.lib.NET_DVR_StopSaveRealData.restype = BOOL
-        if not self.lib.NET_DVR_StopSaveRealData(self._get_preview_handle()):
-            self._error("停止数据捕获异常")
+        if not self.lib.NET_DVR_StopSaveRealData(self.preview_handle):
+            self._error("停止录像异常")
+        self.recording = False
 
     # def _get_play_control_port(self) -> int:
     #     """
