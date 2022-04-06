@@ -174,11 +174,9 @@ class HIKCamera:
         """
         self.frame_buffer_size = frame_buffer_size
         preview_info = NET_DVR_PREVIEWINFO()
-        preview_info.lChannel = 1
+        preview_info.lChannel = self.channel
         preview_info.dwStreamType = 0
         preview_info.bBlocked = 1
-        self.lib.NET_DVR_RealPlay_V40.argtypes = [LONG, POINTER(NET_DVR_PREVIEWINFO), LPVOID, LPVOID]
-        self.lib.NET_DVR_RealPlay_V40.restype = LONG
         # real_data_callback_type = CFUNCTYPE(None, LONG, DWORD, POINTER(BYTE), DWORD, LPVOID)
         # noinspection PyAttributeOutsideInit
         # 见standard_real_data_callback中的注释
@@ -187,6 +185,8 @@ class HIKCamera:
         # else:
         #     # noinspection PyAttributeOutsideInit
         #     self.standard_real_data_callback = None
+        self.lib.NET_DVR_RealPlay_V40.argtypes = [LONG, POINTER(NET_DVR_PREVIEWINFO), LPVOID, LPVOID]
+        self.lib.NET_DVR_RealPlay_V40.restype = LONG
         self.preview_handle = self.lib.NET_DVR_RealPlay_V40(self.user_id, byref(preview_info), None, None)
         if self.preview_handle == -1:
             raise Exception(f"预览失败：{self._get_last_error_code()}")
@@ -374,7 +374,7 @@ class HIKCamera:
         """
         error_code = self._get_last_error_code()
         if error_code != 0:
-            raise Exception(f"{reason}，错误码：{error_code}")
+            raise Exception(f"相机{self.ip} {reason}，错误码：{error_code}")
 
     # def _standard_real_data_callback(self,
     #                                  lRealHandle,

@@ -21,7 +21,7 @@ def record(camera_ip: str):
     camera.start_preview()
     save_video = get_scripts_output(f"{camera_ip}.mp4")
     camera.save_real_data(save_video)
-    time.sleep(3)
+    time.sleep(2)
     camera.stop_save_real_data()
     camera.stop_preview()
     video = cv2.VideoCapture(str(save_video))
