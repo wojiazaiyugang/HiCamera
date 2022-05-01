@@ -35,6 +35,7 @@ class HIKCamera:
         self.user_name = user_name
         self.password = password
         self.encoding = "utf-8"
+        self.user_id = None
         libs_dir = Path(__file__).parent.joinpath("libs")
         os.chdir(libs_dir)
         self.lib = cdll.LoadLibrary(str(libs_dir.joinpath("libhcnetsdk.so")))
@@ -79,6 +80,12 @@ class HIKCamera:
     #         self.error(f"释放播放通道号错误")
 
     def _logout(self):
+        """
+        登出
+        :return:
+        """
+        if self.user_id is None:
+            return
         self.lib.NET_DVR_Logout.argtypes = [LONG]
         self.lib.NET_DVR_Logout.restype = BOOL
         if not self.lib.NET_DVR_Logout(self.user_id):
