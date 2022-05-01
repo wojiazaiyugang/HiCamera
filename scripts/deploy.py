@@ -8,13 +8,13 @@ from pathlib import Path
 if __name__ == '__main__':
     project_dir = Path(__file__).parent.parent.resolve()
     # 删除build文件夹
-    build_dir = Path(__file__).parent.parent.joinpath("build").joinpath("HiCamera")
+    build_dir = Path(__file__).parent.parent.joinpath("build")
     shutil.rmtree(build_dir, ignore_errors=True)
     print(f"删除build文件夹{build_dir}")
     # 新建build文件夹
     build_dir.mkdir(parents=True, exist_ok=True)
     # 打包so
-    subprocess.run(args=f"python -m nuitka --module --remove-output --no-pyi-file --include-package=camera ../../camera",
+    subprocess.run(args=f"python -m nuitka --module --remove-output --no-pyi-file --include-package=camera ../camera",
                    shell=True,
                    check=True,
                    cwd=build_dir)
