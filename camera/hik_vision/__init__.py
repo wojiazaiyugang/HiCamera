@@ -1,14 +1,13 @@
 import os
 import time
-from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, string_at, sizeof, c_long
+from ctypes import cdll, byref, c_char_p, CFUNCTYPE, POINTER, string_at, sizeof
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List
-from datetime import datetime
 
-import cv2
 import numpy as np
 
-import h264decoder
+from camera.data_class import Frame
 from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEINFO_V40, NET_DVR_PREVIEWINFO, \
     NET_DVR_CAMERAPARAMCFG, NET_DVR_VIDEOEFFECT, NET_DVR_GAIN, \
     NET_DVR_WHITEBALANCE, NET_DVR_GAMMACORRECT, NET_DVR_EXPOSURE, NET_DVR_WDR, NET_DVR_DAYNIGHT, NET_DVR_NOISEREMOVE, \
@@ -16,7 +15,8 @@ from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEI
     NET_DVR_LOCAL_SDK_PATH, NET_DVR_SYSHEAD, NET_DVR_STREAMDATA, NET_DVR_AUDIOSTREAMDATA, NET_DVR_PRIVATE_DATA, \
     NET_DVR_COMPRESSIONCFG_V30, NET_DVR_PACKET_INFO_EX
 from camera.hik_vision.type_map import LONG, DWORD, BYTE, BOOL, LPVOID, UBYTE, CHAR, INT, UINT, UNSIGNED_CHAR, CHAR_P
-from camera.data_class import Frame
+
+import PyNvCodec as nvc
 
 
 class HIKCamera:
@@ -24,12 +24,16 @@ class HIKCamera:
     海康相机
     """
 
-    def __init__(self, ip: str, user_name: str, password: str):
+    def __init__(self, ip: str,
+                 user_name: str,
+                 password: str,
+                 gpu_index: int = 0):
         """
         相机初始化
         :param ip: 相机IP
         :param user_name: 用户名
         :param password: 密码
+        :param 实时视频流解码用的GPU索引，默认为0
         """
         self.ip = ip
         self.user_name = user_name
@@ -51,33 +55,29 @@ class HIKCamera:
         self.play_control_port = None  # 播放通道号
         self.frames: List[Frame] = []  # frame buffer
         self.frame_buffer_size = None
-        self.h264decoder = None
+
+        cfg = self.get_compress_config()
+        self.width, self.height = {
+            19: (1280, 720),
+            27: (1920, 1080),
+            64: (3840, 2160),
+            70: (2560, 1440),
+            115: (3840, 2400),
+        }.get(cfg.struNormHighRecordPara.byResolution, (0, 0))
+        if self.width == 0 or self.height == 0:
+            print(f"该分辨率只能保存视频，无法获取实时视频流")
+        self.gpu_index = gpu_index
+        self.nv_dec = nvc.PyNvDecoder(self.width, self.height, nvc.PixelFormat.NV12, nvc.CudaVideoCodec.H264,
+                                      self.gpu_index)
+        self.nv_cvt_nv12_to_bgr = nvc.PySurfaceConverter(self.width, self.height, self.nv_dec.Format(),
+                                                         nvc.PixelFormat.BGR,
+                                                         self.gpu_index)
+        self.nv_dwn = nvc.PySurfaceDownloader(self.width, self.height, self.nv_cvt_nv12_to_bgr.Format(), self.gpu_index)
         self.recording = False  # 正在保存录像
 
     def __del__(self):
         self._logout()
         self._clean_sdk()
-
-    # def stop_play(self):
-    #     """
-    #     停止播放
-    #     """
-    #     if self.play_control_port is None:
-    #         return
-    #     port = self._get_play_control_port()
-    #     self.play_control_port = None
-    #     self.play_lib.PlayM4_Stop.argtypes = [h_INT]
-    #     self.play_lib.PlayM4_Stop.restype = h_INT
-    #     if not self.play_lib.PlayM4_Stop(port):
-    #         self.error(f"停止播放错误")
-    #     # self.play_lib.PlayM4_CloseFile.argtypes = [h_INT]
-    #     # self.play_lib.PlayM4_CloseFile.restype = h_INT
-    #     # if not self.play_lib.PlayM4_CloseFile(self._get_play_control_port()):
-    #     #     self.error(f"关闭文件错误")
-    #     self.play_lib.PlayM4_FreePort.argtypes = [h_INT]
-    #     self.play_lib.PlayM4_FreePort.restype = h_INT
-    #     if not self.play_lib.PlayM4_FreePort(port):
-    #         self.error(f"释放播放通道号错误")
 
     def _logout(self):
         """
@@ -133,34 +133,28 @@ class HIKCamera:
             self.channel = device_info.struDeviceV30.byStartChan
             return user_id
 
-    # def get_sdk_version(self) -> str:
-    #     """
-    #     SDK版本信息，2个高字节表示主版本，2个低字节表示次版本。如0x00030000：表示版本为3.0。
-    #     :return:
-    #     """
-    #     return hex(self.call_cpp("NET_DVR_GetSDKVersion"))
-
     def _real_play_callback(self, lPreviewHandle, pstruPackInfo: NET_DVR_PACKET_INFO_EX, pUser):
         data = string_at(pstruPackInfo.contents.pPacketBuffer, pstruPackInfo.contents.dwPacketSize)
-        all_frame_data = self.h264decoder.decode(data)
-        for frame_data in all_frame_data:
-            (frame, w, h, ls) = frame_data
-            if frame is not None:
-                frame = np.frombuffer(frame, dtype=np.ubyte, count=len(frame))
-                frame = frame.reshape((h, ls // 3, 3))
-                frame = frame[:, :w, :]
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                frame_time = datetime(year=pstruPackInfo.contents.dwYear,
-                                      month=pstruPackInfo.contents.dwMonth,
-                                      day=pstruPackInfo.contents.dwDay,
-                                      hour=pstruPackInfo.contents.dwHour,
-                                      minute=pstruPackInfo.contents.dwMinute,
-                                      second=pstruPackInfo.contents.dwSecond,
-                                      microsecond=pstruPackInfo.contents.dwMillisecond * 1000)
-                self.frames.append(Frame(data=frame,
-                                         frame_time=frame_time))
-                if self.frame_buffer_size and len(self.frames) > self.frame_buffer_size:
-                    del self.frames[0]
+        enc_packet = np.frombuffer(data, dtype=np.uint8)
+        pkt_data = nvc.PacketData()
+        raw_surface = self.nv_dec.DecodeSurfaceFromPacket(enc_packet, pkt_data)
+        if not raw_surface.Empty():
+            cc_ctx = nvc.ColorspaceConversionContext(color_space=nvc.ColorSpace.BT_709,
+                                                     color_range=nvc.ColorRange.MPEG)
+            cvt_surface = self.nv_cvt_nv12_to_bgr.Execute(raw_surface, cc_ctx)
+            raw_frame = np.ndarray(shape=(cvt_surface.HostSize()), dtype=np.uint8)
+            self.nv_dwn.DownloadSingleSurface(cvt_surface, raw_frame)
+            frame_data = raw_frame.reshape((self.height, self.width, 3))
+            frame_time = datetime(year=pstruPackInfo.contents.dwYear,
+                                  month=pstruPackInfo.contents.dwMonth,
+                                  day=pstruPackInfo.contents.dwDay,
+                                  hour=pstruPackInfo.contents.dwHour,
+                                  minute=pstruPackInfo.contents.dwMinute,
+                                  second=pstruPackInfo.contents.dwSecond,
+                                  microsecond=pstruPackInfo.contents.dwMillisecond * 1000)
+            self.frames.append(Frame(data=frame_data, frame_time=frame_time))
+            if self.frame_buffer_size and len(self.frames) > self.frame_buffer_size:
+                del self.frames[0]
 
     def start_preview(self, frame_buffer_size: int = None) -> int:
         """
@@ -201,8 +195,6 @@ class HIKCamera:
             cfg = self.get_compress_config()
             if cfg.struNormHighRecordPara.byVideoEncType != 1:
                 raise Exception(f"获取实时视频流目前只支持H264编码")
-            h264decoder.disable_logging()
-            self.h264decoder = h264decoder.H264Decoder()
             self.lib.NET_DVR_SetESRealPlayCallBack.argtypes = [LONG, LPVOID, LPVOID]
             self.lib.NET_DVR_SetESRealPlayCallBack.restype = BOOL
             callback_type = CFUNCTYPE(None, LONG, POINTER(NET_DVR_PACKET_INFO_EX), LPVOID)
@@ -212,7 +204,6 @@ class HIKCamera:
             self._real_play_callback = callback_type(self._real_play_callback)
             if not self.lib.NET_DVR_SetESRealPlayCallBack(self.preview_handle, self._real_play_callback, LPVOID()):
                 self._error("实时数据回调错误")
-        # print(f"preview handle is {self.preview_handle}")
         return self.preview_handle
 
     def _stop_real_data_callback(self):
@@ -279,22 +270,6 @@ class HIKCamera:
             self._error("停止录像异常")
         self.recording = False
 
-    # def _get_play_control_port(self) -> int:
-    #     """
-    #     获取播放通道号
-    #     :return:
-    #     """
-    #     if self.play_control_port is not None:
-    #         return self.play_control_port
-    #     port = INT(-1)
-    #     self.play_lib.PlayM4_GetPort.argtypes = [POINTER(INT)]
-    #     self.play_lib.PlayM4_GetPort.restype = INT
-    #     if self.play_lib.PlayM4_GetPort(byref(port)):
-    #         self.play_control_port = port.value
-    #         return self.play_control_port
-    #     else:
-    #         self.error("获取播放通道号失败")
-
     def _get_dvr_config(self, command: int, cfg: Any) -> Any:
         """
         获取设备的配置信息
@@ -359,20 +334,6 @@ class HIKCamera:
         del self.frames[0]
         return frame
 
-    # def _display_callback(self, nPort, pBuf, nSize, nWidth, nHeight, nStamp, nType, nReserved):
-    #     '''
-    #     显示回调函数
-    #     '''
-    #     if self.frame_buffer_size is None:
-    #         return
-    #     bytes_data = string_at(pBuf, nSize)
-    #     np_data = np.frombuffer(bytes_data, dtype=np.uint8)
-    #     img = np_data.reshape(nHeight * 3 // 2, nWidth)
-    #     img = cv2.cvtColor(img, cv2.COLOR_YUV2BGR_YV12)
-    #     self.frames.append(img)
-    #     if len(self.frames) > self.frame_buffer_size:
-    #         del self.frames[0]
-
     def _error(self, reason: str):
         """
         报错
@@ -382,49 +343,6 @@ class HIKCamera:
         error_code = self._get_last_error_code()
         if error_code != 0:
             raise Exception(f"相机{self.ip} {reason}，错误码：{error_code}")
-
-    # def _standard_real_data_callback(self,
-    #                                  lRealHandle,
-    #                                  dwDataType,
-    #                                  pBuffer,
-    #                                  dwBufSize,
-    #                                  pUser):
-    #     """
-    #     实时数据回调函数
-    #     :param lRealHandle:
-    #     :param dwDataType:
-    #     :param pBuffer:
-    #     :param dwBufSize:
-    #     :return:
-    #     """
-    #     if dwDataType == NET_DVR_SYSHEAD:
-    #         self.play_lib.PlayM4_SetStreamOpenMode.argtypes = [INT, UINT]
-    #         self.play_lib.PlayM4_SetStreamOpenMode.restype = INT
-    #         # 重复设置可能会出错，忽略即可
-    #         self.play_lib.PlayM4_SetStreamOpenMode(self._get_play_control_port(), 0)
-    #         self.play_lib.PlayM4_OpenStream.argtypes = [INT, POINTER(UNSIGNED_CHAR), UINT, UINT]
-    #         self.play_lib.PlayM4_OpenStream.restype = INT
-    #         if not self.play_lib.PlayM4_OpenStream(self._get_play_control_port(), pBuffer, dwBufSize, 1024 * 1000):
-    #             self.error("开启播放流错误")
-    #         self.play_lib.PlayM4_SetDisplayCallBack.argtypes = [INT, LPVOID]
-    #         self.play_lib.PlayM4_SetDisplayCallBack.restype = INT
-    #         display_callback_type = CFUNCTYPE(None, LONG, POINTER(CHAR), LONG, LONG, LONG, LONG, LONG, LONG)
-    #         # noinspection PyAttributeOutsideInit
-    #         # 用于解决ctypes的回调函数中无法访问self的问题，详见
-    #         # https://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes/65174074#65174074
-    #         self.display_callback = display_callback_type(self._display_callback)
-    #         if not self.play_lib.PlayM4_SetDisplayCallBack(self._get_play_control_port(), self.display_callback):
-    #             self.error("设置播放回调函数失败")
-    #         if not self.play_lib.PlayM4_Play(self._get_play_control_port(), None):
-    #             self.error("开启播放失败" + str(self._get_play_control_port()))
-    #     elif dwDataType == NET_DVR_STREAMDATA:
-    #         self.play_lib.PlayM4_InputData.argtypes = [INT, POINTER(UNSIGNED_CHAR), UINT]
-    #         self.play_lib.PlayM4_InputData.restype = INT
-    #         if self.play_control_port is None:
-    #             return
-    #         if not self.play_lib.PlayM4_InputData(self.play_control_port, pBuffer, dwBufSize):
-    #             pass
-    #             # self.error("输入视频流错误")
 
     def ptz_control(self, command: int, command_type: int, speed: int):
         """
@@ -446,17 +364,6 @@ class HIKCamera:
         res = self.lib.NET_DVR_PTZControlWithSpeed_Other(self.user_id, self.channel, command, command_type, speed)
         if not res:
             self._error("云台控制错误")
-
-    # def get_ability(self):
-    #     self.lib.NET_DVR_GetDeviceAbility.argtypes = [LONG, DWORD, CHAR_P, DWORD, CHAR_P, DWORD]
-    #     self.lib.NET_DVR_GetDeviceAbility.restype = BOOL
-    #     s = bytes("123" * 2000, encoding=self.encoding)
-    #     # ss = h_CHAR_P(s)
-    #     out = bytes("123" * 2000, encoding=self.encoding)
-    #     if not self.lib.NET_DVR_GetDeviceAbility(self.user_id, 0x009, CHAR_P(s), len(s), out, len(out)):
-    #         self.error("")
-    #
-    #     a = 1
 
 
 if __name__ == '__main__':
