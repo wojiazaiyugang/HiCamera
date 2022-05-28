@@ -67,8 +67,7 @@ class HIKCamera:
         if self.width == 0 or self.height == 0:
             print(f"该分辨率只能保存视频，无法获取实时视频流")
         self.gpu_index = gpu_index
-        self.nv_dec = nvc.PyNvDecoder(self.width, self.height, nvc.PixelFormat.NV12, nvc.CudaVideoCodec.H264,
-                                      self.gpu_index)
+        self.nv_dec = self.init_decoder()
         self.nv_cvt_nv12_to_bgr = nvc.PySurfaceConverter(self.width, self.height, self.nv_dec.Format(),
                                                          nvc.PixelFormat.BGR,
                                                          self.gpu_index)
@@ -78,6 +77,13 @@ class HIKCamera:
     def __del__(self):
         self._logout()
         self._clean_sdk()
+
+    def init_decoder(self) -> nvc.PyNvDecoder:
+        """
+        初始化解码器
+        :return:
+        """
+        return nvc.PyNvDecoder(self.width, self.height, nvc.PixelFormat.NV12, nvc.CudaVideoCodec.H264, self.gpu_index)
 
     def _logout(self):
         """
@@ -137,7 +143,11 @@ class HIKCamera:
         data = string_at(pstruPackInfo.contents.pPacketBuffer, pstruPackInfo.contents.dwPacketSize)
         enc_packet = np.frombuffer(data, dtype=np.uint8)
         pkt_data = nvc.PacketData()
-        raw_surface = self.nv_dec.DecodeSurfaceFromPacket(enc_packet, pkt_data)
+        try:
+            raw_surface = self.nv_dec.DecodeSurfaceFromPacket(enc_packet, pkt_data)
+        except Exception:
+            self.nv_dec = self.init_decoder()
+            return
         if not raw_surface.Empty():
             cc_ctx = nvc.ColorspaceConversionContext(color_space=nvc.ColorSpace.BT_709,
                                                      color_range=nvc.ColorRange.MPEG)
