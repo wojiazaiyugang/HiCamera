@@ -35,7 +35,7 @@ if __name__ == '__main__':
             raise Exception(f"单元测试文件{test_file}不存在")
         shutil.copy(test_file, tests_dir.joinpath(test_file_name))
     # 复制第三方库
-    name = "h264decoder.cpython-37m-x86_64-linux-gnu.so"
+    name = "PyNvCodec.cpython-37m-x86_64-linux-gnu.so"
     shutil.copyfile(str(project_dir.joinpath(name)), str(build_dir.joinpath(name)))
     print(f"打包成功{build_dir}")
 

@@ -55,6 +55,7 @@ class HIKCamera:
         self.play_control_port = None  # 播放通道号
         self.frames: List[Frame] = []  # frame buffer
         self.frame_buffer_size = None
+        self.callback_type = None
 
         cfg = self.get_compress_config()
         self.width, self.height = {
@@ -145,7 +146,8 @@ class HIKCamera:
         pkt_data = nvc.PacketData()
         try:
             raw_surface = self.nv_dec.DecodeSurfaceFromPacket(enc_packet, pkt_data)
-        except Exception:
+        except nvc.HwResetException as e:
+            print(f"解码器重置: {e}")
             self.nv_dec = self.init_decoder()
             return
         if not raw_surface.Empty():
@@ -207,11 +209,11 @@ class HIKCamera:
                 raise Exception(f"获取实时视频流目前只支持H264编码")
             self.lib.NET_DVR_SetESRealPlayCallBack.argtypes = [LONG, LPVOID, LPVOID]
             self.lib.NET_DVR_SetESRealPlayCallBack.restype = BOOL
-            callback_type = CFUNCTYPE(None, LONG, POINTER(NET_DVR_PACKET_INFO_EX), LPVOID)
+            self.callback_type = CFUNCTYPE(None, LONG, POINTER(NET_DVR_PACKET_INFO_EX), LPVOID)
             # 用于解决ctypes的回调函数中无法访问self的问题，详见
             # https://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes/65174074#65174074
             # noinspection PyAttributeOutsideInit
-            self._real_play_callback = callback_type(self._real_play_callback)
+            self._real_play_callback = self.callback_type(self._real_play_callback)
             if not self.lib.NET_DVR_SetESRealPlayCallBack(self.preview_handle, self._real_play_callback, LPVOID()):
                 self._error("实时数据回调错误")
         return self.preview_handle
