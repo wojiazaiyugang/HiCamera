@@ -12,7 +12,7 @@ NET_DVR_PRIVATE_DATA = 112
 
 
 # noinspection PyPep8Naming
-class NET_DVR_USER_LOGIN_INFO(Structure):
+class  NET_DVR_USER_LOGIN_INFO(Structure):
     """
     登录参数结构体
     """
@@ -475,4 +475,14 @@ class NET_DVR_PACKET_INFO_EX(Structure):
         ("dwPacketMode", DWORD),
         ("byRes2", BYTE * 16),
         ("dwReserved", DWORD * 6)
+    ]
+
+
+class NET_DVR_JPEGPARA(Structure):
+    """
+    JPEG图像信息结构体
+    """
+    _fields_ = [
+        ("wPicSize", WORD),
+        ("wPicQuality", WORD)
     ]

@@ -13,7 +13,7 @@ from camera.hik_vision.structure import NET_DVR_USER_LOGIN_INFO, NET_DVR_DEVICEI
     NET_DVR_WHITEBALANCE, NET_DVR_GAMMACORRECT, NET_DVR_EXPOSURE, NET_DVR_WDR, NET_DVR_DAYNIGHT, NET_DVR_NOISEREMOVE, \
     NET_DVR_CMOSMODECFG, NET_DVR_TIME, NET_DVR_BACKLIGHT, \
     NET_DVR_LOCAL_SDK_PATH, NET_DVR_SYSHEAD, NET_DVR_STREAMDATA, NET_DVR_AUDIOSTREAMDATA, NET_DVR_PRIVATE_DATA, \
-    NET_DVR_COMPRESSIONCFG_V30, NET_DVR_PACKET_INFO_EX
+    NET_DVR_COMPRESSIONCFG_V30, NET_DVR_PACKET_INFO_EX, NET_DVR_JPEGPARA
 from camera.hik_vision.type_map import LONG, DWORD, BYTE, BOOL, LPVOID, UBYTE, CHAR, INT, UINT, UNSIGNED_CHAR, CHAR_P
 
 import PyNvCodec as nvc
@@ -376,6 +376,31 @@ class HIKCamera:
         res = self.lib.NET_DVR_PTZControlWithSpeed_Other(self.user_id, self.channel, command, command_type, speed)
         if not res:
             self._error("云台控制错误")
+
+    def reboot(self) -> None:
+        """
+        重启设备
+        """
+        self.lib.NET_DVR_RebootDVR.argtypes = [LONG]
+        self.lib.NET_DVR_RebootDVR.retype = BOOL
+        res = self.lib.NET_DVR_RebootDVR(self.user_id)
+        if not res:
+            self._error("设备重启失败")
+
+    def capture_image(self, save_file: Path) -> None:
+        """
+        设备抓图
+        :param save_file: 保存的图片文件
+        """
+        jpeg_para = NET_DVR_JPEGPARA()
+        jpeg_para.wPicSize = 5  # 1280 * 720
+        jpeg_para.wPicQuality = 0  # 最好
+        self.lib.NET_DVR_CaptureJPEGPicture.argtypes = [LONG, LONG, POINTER(NET_DVR_JPEGPARA), LPVOID]
+        self.lib.NET_DVR_CaptureJPEGPicture.restype = BOOL
+        res = self.lib.NET_DVR_CaptureJPEGPicture(self.user_id, self.channel, byref(jpeg_para),
+                                                  c_char_p(bytes(str(save_file), self.encoding)))
+        if not res:
+            self._error(f"保存图片失败")
 
 
 if __name__ == '__main__':
